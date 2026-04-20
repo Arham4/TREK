@@ -110,6 +110,11 @@ export default function TripPlannerPage(): React.ReactElement | null {
   }, [tripId])
 
   useEffect(() => {
+    window.addEventListener('accommodations:changed', loadAccommodations)
+    return () => window.removeEventListener('accommodations:changed', loadAccommodations)
+  }, [loadAccommodations])
+
+  useEffect(() => {
     addonsApi.enabled().then(data => {
       const map = {}
       data.addons.forEach(a => { map[a.id] = true })

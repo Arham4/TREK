@@ -215,6 +215,13 @@ export function handleRemoteEvent(set: SetState, event: WebSocketEvent): void {
           ),
         }
 
+      // Accommodations
+      case 'accommodation:created':
+      case 'accommodation:updated':
+      case 'accommodation:deleted':
+        window.dispatchEvent(new CustomEvent('accommodations:changed', { detail: payload }))
+        return {}
+
       // Reservations
       case 'reservation:created':
         if (state.reservations.some(r => r.id === (payload.reservation as Reservation).id)) return {}

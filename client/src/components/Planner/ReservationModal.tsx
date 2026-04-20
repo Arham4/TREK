@@ -195,6 +195,12 @@ export function ReservationModal({ isOpen, onClose, onSave, reservation, days, p
     e.preventDefault()
     if (!form.title.trim()) return
     if (isEndBeforeStart) { toast.error(t('reservations.validation.endBeforeStart')); return }
+    if (form.type === 'hotel' && form.hotel_place_id) {
+      if (!form.hotel_start_day || !form.hotel_end_day) {
+        toast.error('Check-in and Check-out days must be selected to link this map place.')
+        return
+      }
+    }
     setIsSaving(true)
     try {
       const metadata: Record<string, string> = {}

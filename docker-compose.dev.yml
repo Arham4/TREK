@@ -1,0 +1,23 @@
+services:
+  dev:
+    image: node:22
+    container_name: trek-dev
+    volumes:
+      - .:/app
+    working_dir: /app
+    ports:
+      - "3001:3001"
+      - "0.0.0.0:5174:5173"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    command: >
+      bash -c "
+      echo 'Installing dependencies...' &&
+      cd server && npm install &&
+      cd ../client && npm install &&
+      cd .. &&
+      echo 'Starting development servers...' &&
+      npx concurrently \"cd server && npm run dev\" \"cd client && npx vite --host\"
+      "
+    userns_mode: keep-id
