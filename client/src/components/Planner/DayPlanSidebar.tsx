@@ -4,10 +4,11 @@ declare global { interface Window { __dragData: DragDataPayload | null } }
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import ReactDOM from 'react-dom'
-import { ChevronDown, ChevronRight, ChevronUp, Navigation, RotateCcw, ExternalLink, Clock, Pencil, GripVertical, Ticket, Plus, FileText, Check, Trash2, Info, MapPin, Star, Heart, Camera, Lightbulb, Flag, Bookmark, Train, Bus, Plane, Car, Ship, Coffee, ShoppingBag, AlertTriangle, FileDown, Lock, Hotel, Utensils, Users, Undo2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Navigation, RotateCcw, ExternalLink, Clock, Pencil, GripVertical, Ticket, Plus, FileText, Check, Trash2, Info, MapPin, Star, Heart, Camera, Lightbulb, Flag, Bookmark, Train, Bus, Plane, Car, Ship, Coffee, ShoppingBag, AlertTriangle, FileDown, Lock, Hotel, Utensils, Users, Undo2, Sparkles } from 'lucide-react'
+import AIPlannerModal from './AIPlannerModal'
 
 const RES_ICONS = { flight: Plane, hotel: Hotel, restaurant: Utensils, train: Train, car: Car, cruise: Ship, event: Ticket, tour: Users, other: FileText }
-import { assignmentsApi, reservationsApi } from '../../api/client'
+import { assignmentsApi, reservationsApi, tripsApi } from '../../api/client'
 import { downloadTripPDF } from '../PDF/TripPDF'
 import { calculateRoute, generateGoogleMapsUrl, optimizeRoute } from '../Map/RouteCalculator'
 import PlaceAvatar from '../shared/PlaceAvatar'
@@ -137,6 +138,7 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
   const [hoveredId, setHoveredId] = useState(null)
   const [transportDetail, setTransportDetail] = useState(null)
   const [transportPosVersion, setTransportPosVersion] = useState(0)
+  const [aiPlanner, setAiPlanner] = useState<{ open: boolean; dayId?: number }>({ open: false })
   const [timeConfirm, setTimeConfirm] = useState<{
     dayId: number; fromId: number; time: string;
     // For drag & drop reorder
@@ -925,6 +927,24 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
         </div>
       </div>
 
+      {/* Magic Planner button */}
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-faint)', flexShrink: 0 }}>
+        <button
+          onClick={() => setAiPlanner({ open: true })}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+            padding: '8px 12px', borderRadius: 10,
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            border: 'none', cursor: 'pointer', color: '#fff',
+            fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+            justifyContent: 'center',
+          }}
+        >
+          <Sparkles size={15} />
+          Magic Planner
+        </button>
+      </div>
+
       {/* Tagesliste */}
       <div className="scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0, scrollbarWidth: 'thin', scrollbarColor: 'var(--scrollbar-thumb) transparent' }}>
         {days.map((day, index) => {
@@ -1063,6 +1083,15 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
                 >
                   <FileText size={16} strokeWidth={2} />
                 </button>}
+                <button
+                  onClick={e => { e.stopPropagation(); setAiPlanner({ open: true, dayId: day.id }) }}
+                  title="Plan this day with AI"
+                  style={{ flexShrink: 0, background: 'none', border: 'none', padding: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-faint)' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#8b5cf6'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}
+                >
+                  <Sparkles size={15} strokeWidth={2} />
+                </button>
                 <button
                   onClick={e => toggleDay(day.id, e)}
                   style={{ flexShrink: 0, background: 'none', border: 'none', padding: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-faint)' }}
@@ -1887,6 +1916,22 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
         </div>
       )}
       <ContextMenu menu={ctxMenu.menu} onClose={ctxMenu.close} />
+      {aiPlanner.open && (
+        <AIPlannerModal
+          tripId={tripId}
+          dayId={aiPlanner.dayId}
+          onClose={() => setAiPlanner({ open: false })}
+          onPlanApplied={(undoLog) => {
+            tripActions.loadTrip(tripId)
+            if (undoLog.length > 0) {
+              pushUndo?.(t('undo.aiPlan'), async () => {
+                await tripsApi.undoAIPlan(tripId, undoLog)
+                await tripActions.loadTrip(tripId)
+              })
+            }
+          }}
+        />
+      )}
     </div>
   )
 })

@@ -1594,6 +1594,7 @@ const en: Record<string, string | { name: string; category: string }[]> = {
   'undo.importGpx': 'GPX import',
   'undo.importGoogleList': 'Google Maps import',
   'undo.addPlace': 'Place added',
+  'undo.aiPlan': 'AI Magic Plan',
   'undo.done': 'Undone: {action}',
 
   // Notifications

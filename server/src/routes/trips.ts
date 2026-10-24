@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, canAccessTrip } from '../db/database';
 import { authenticate, demoUploadBlock } from '../middleware/auth';
 import { broadcast } from '../websocket';
-import { AuthRequest, Trip } from '../types';
+import { planTrip, planDay } from '../services/aiPlannerService';
+import { AuthRequest } from '../types';
 import { writeAudit, getClientIp, logInfo } from '../services/auditLog';
 import { checkPermission } from '../services/permissions';
 import {
@@ -190,7 +191,62 @@ router.post('/:id/cover', authenticate, demoUploadBlock, uploadCover.single('cov
   res.json({ cover_image: coverUrl });
 });
 
-// ── Copy / duplicate a trip ──────────────────────────────────────────────────
+// ── AI Planning ──────────────────────────────────────────────────────────────
+router.post('/:id/ai-plan', authenticate, async (req: Request, res: Response) => {
+  const authReq = req as AuthRequest;
+  const userId = authReq.user.id;
+  const { model = 'gemini', prompt, history } = req.body as { model?: string; prompt?: string; history?: any[] };
+  try {
+    const result = await planTrip(Number(req.params.id), userId, model, prompt, history);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.post('/:id/days/:dayId/ai-plan', authenticate, async (req: Request, res: Response) => {
+  const authReq = req as AuthRequest;
+  const userId = authReq.user.id;
+  const { model = 'gemini', prompt, history } = req.body as { model?: string; prompt?: string; history?: any[] };
+  try {
+    const result = await planDay(Number(req.params.id), Number(req.params.dayId), userId, model, prompt, history);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.post('/:id/ai-plan/undo', authenticate, (req: Request, res: Response) => {
+  const authReq = req as AuthRequest;
+  if (!canAccessTrip(req.params.id, authReq.user.id)) {
+    return res.status(404).json({ error: 'Trip not found' });
+  }
+  
+  const { undoLog } = req.body;
+  if (!Array.isArray(undoLog)) {
+    return res.status(400).json({ error: 'Invalid undo log' });
+  }
+
+  const dbInsert = db.prepare('INSERT INTO day_assignments (day_id, place_id, assignment_time, order_index) VALUES (?, ?, ?, ?)');
+  const dbDelete = db.prepare('DELETE FROM day_assignments WHERE place_id = ?');
+
+  try {
+    const revertAll = db.transaction(() => {
+      for (const log of undoLog) {
+        if (!log.place_id) continue;
+        dbDelete.run(log.place_id);
+        if (log.prev_day_id) {
+          dbInsert.run(log.prev_day_id, log.place_id, log.prev_time || null, log.prev_order || 0);
+        }
+      }
+    });
+    revertAll();
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post('/:id/copy', authenticate, (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
   if (!checkPermission('trip_create', authReq.user.role, null, authReq.user.id, false))

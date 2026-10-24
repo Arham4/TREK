@@ -1556,6 +1556,9 @@ const de: Record<string, string | { name: string; category: string }[]> = {
   'undo.lock': 'Ortssperre umgeschaltet',
   'undo.importGpx': 'GPX-Import',
   'undo.importGoogleList': 'Google Maps-Import',
+  'undo.aiPlan': 'KI-Magie-Plan',
+  'undo.addPlace': 'Ort hinzugefügt',
+  'undo.done': 'Rückgängig gemacht: {action}',
 
   // Notifications
   'notifications.title': 'Benachrichtigungen',
