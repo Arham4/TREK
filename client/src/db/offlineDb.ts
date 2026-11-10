@@ -1,6 +1,6 @@
 import type { RoadtripPreferences } from '@trek/shared';
 import Dexie, { type Table } from 'dexie';
-import type { Trip, Day, Place, PackingItem, TodoItem, BudgetItem, Reservation, TripFile, Accommodation, TripMember, Tag, Category } from '../types';
+import type { Trip, Day, Place, PackingItem, TodoItem, BudgetItem, Reservation, TripFile, Accommodation, TripMember, Tag, Category, Outfit } from '../types';
 
 /** TripMember enriched with tripId so we can index by trip. */
 export interface CachedTripMember extends TripMember {
@@ -179,6 +179,7 @@ class TrekOfflineDb extends Dexie {
   blobCache!: Table<BlobCacheEntry, string>;
   importFiles!: Table<ImportSourceFile, [string, string]>;
   areaPlaces!: Table<CachedAreaPlace, [string, number]>;
+  outfits!: Table<Outfit, number>;
 
   constructor(name: string = ANON_DB_NAME) {
     super(name);
@@ -245,6 +246,11 @@ class TrekOfflineDb extends Dexie {
       await tx.table('syncMeta').toCollection().modify((row: { areaPlacesKey?: string }) => {
         delete row.areaPlacesKey;
       });
+    });
+
+    // v9: outfits planning per day and traveler
+    this.version(9).stores({
+      outfits: 'id, trip_id, day_id, user_id',
     });
   }
 }

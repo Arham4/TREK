@@ -20,6 +20,7 @@ import { badgeLabel, distanceBadge } from './roadtrip/stageBadges'
 import type { CorridorReach } from '../../../components/Roadtrip/corridorSearchModel'
 import { useSettingsStore } from '../../../store/settingsStore'
 import { useAuthStore } from '../../../store/authStore'
+import { useTripStore } from '../../../store/tripStore'
 import { canManageDocSync } from '../../../components/Files/docsync/useDocSync'
 import { useDocSyncOffered } from '../../../components/Files/docsync/useDocSyncOffered'
 import type { Day, Trip } from '../../../types'
@@ -44,7 +45,7 @@ export type MTripView = 'plan' | 'map'
 export type MTripMode = 'go' | 'edit' | 'browse'
 /** The road trip tab's own two halves: the chain, or the same map showing the stage. */
 export type MRtView = 'list' | 'map'
-export type MTripListsTab = 'packing' | 'todo'
+export type MTripListsTab = 'packing' | 'todo' | 'outfits'
 export type MTripCollabTab = 'chat' | 'notes' | 'links' | 'polls'
 
 /**
@@ -221,7 +222,7 @@ export default function MTripShell({
   const [sheet, setSheet] = useState<MTripSheetState | null>(null)
   const [listsTab, setListsTabState] = useState<MTripListsTab>(() => {
     const saved = sessionStorage.getItem(`trip-lists-subtab-${tripId}`)
-    return saved === 'todo' ? 'todo' : 'packing'
+    return saved === 'todo' || saved === 'outfits' ? saved : 'packing'
   })
   const [collabTab, setCollabTab] = useState<MTripCollabTab>('chat')
   const [transportsCompact, setTransportsCompact] = useState(false)
@@ -406,6 +407,7 @@ export default function MTripShell({
 
   const packedCount = packingItems.filter(i => i.checked).length
   const todoOpenCount = todoItems.filter(i => !i.checked).length
+  const outfits = useTripStore(s => s.outfits) || []
 
   // The stage header: the day on screen and what it costs, or the whole drive while
   // the day filter is off. A figure nothing has measured yet is left out rather than
@@ -604,6 +606,7 @@ export default function MTripShell({
             {([
               { value: 'packing' as const, label: t('todo.subtab.packing'), count: `${packedCount}/${packingItems.length}` },
               { value: 'todo' as const, label: t('todo.subtab.todo'), count: t('mobileTrip.todoOpenCount', { count: todoOpenCount }) },
+              { value: 'outfits' as const, label: t('todo.subtab.outfits'), count: `${outfits.length}` },
             ]).map(seg => (
               <button
                 key={seg.value}

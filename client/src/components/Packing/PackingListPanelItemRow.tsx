@@ -4,7 +4,7 @@ import { useToast } from '../shared/Toast'
 import { useTranslation } from '../../i18n'
 import {
   CheckSquare, Square, Trash2, Plus, Pencil, Package, GripVertical, UserRound, Users, HandHelping,
-  MoreHorizontal,
+  MoreHorizontal, Shirt,
 } from 'lucide-react'
 import type { PackingItem, PackingBag } from '../../types'
 import { katColor } from './packingListPanel.helpers'
@@ -55,8 +55,20 @@ export function ArtikelZeile({ item, tripId, categories, onCategoryChange: _onCa
   const [bagInlineName, setBagInlineName] = useState('')
   const itemMenuBtnRef = useRef<HTMLButtonElement>(null)
   const { togglePackingItem, updatePackingItem, deletePackingItem } = useTripStore()
+  const outfits = useTripStore(s => s.outfits)
+  const days = useTripStore(s => s.days)
   const toast = useToast()
   const { t } = useTranslation()
+
+  // Outfits wear count
+  const matchingOutfits = !isPlaceholder && outfits ? outfits.filter(o =>
+    o.items?.some(i => i.packing_item_id === item.id || (!i.packing_item_id && i.name.trim().toLowerCase() === item.name.trim().toLowerCase()))
+  ) : []
+  const outfitWearCount = matchingOutfits.length
+  const outfitDaysLabel = matchingOutfits.map(o => {
+    const d = days?.find(day => day.id === o.day_id)
+    return d ? (d.date ? `${d.date}` : `Day ${d.day_index + 1}`) : null
+  }).filter(Boolean).join(', ')
 
   // Three-tier sharing display (#858).
   const sharedToMe = !!item.is_private && item.owner_id != null && item.owner_id !== currentUserId
@@ -173,6 +185,28 @@ export function ArtikelZeile({ item, tripId, categories, onCategoryChange: _onCa
       ) : (
         <span style={nameStyle}>
           {item.name}
+        </span>
+      )}
+
+      {/* Outfits wear count badge */}
+      {!isPlaceholder && outfitWearCount > 0 && (
+        <span
+          className="packing-row-badge"
+          title={outfitDaysLabel ? `${t('outfits.wornCount', { count: outfitWearCount })}: ${outfitDaysLabel}` : t('outfits.wornCount', { count: outfitWearCount })}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            flexShrink: 0,
+            fontSize: 'calc(10px * var(--fs-scale-caption, 1))',
+            fontWeight: 600,
+            color: 'var(--accent)',
+            background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+            padding: '1px 6px',
+            borderRadius: 99,
+          }}
+        >
+          <Shirt size={10} /> {outfitWearCount}×
         </span>
       )}
 

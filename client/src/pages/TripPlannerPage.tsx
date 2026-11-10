@@ -43,11 +43,12 @@ import { accommodationRepo } from '../repo/accommodationRepo'
 import { useAuthStore } from '../store/authStore'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
 import { useTripWebSocket } from '../hooks/useTripWebSocket'
+import PlanDocumentHost from '../components/Planner/DocumentView/PlanDocumentHost'
 import { useRouteCalculation } from '../hooks/useRouteCalculation'
 import { usePlaceSelection } from '../hooks/usePlaceSelection'
 import { usePlannerHistory } from '../hooks/usePlannerHistory'
 import type { Accommodation, TripMember, Day, Place, Reservation, PackingItem, TodoItem } from '../types'
-import { ListTodo, Download, Plus, Trash2, FolderPlus } from 'lucide-react'
+import { ListTodo, Download, Plus, Trash2, FolderPlus, Shirt } from 'lucide-react'
 import { useTripPlanner } from './tripPlanner/useTripPlanner'
 import { usePoiExplore } from '../components/Map/usePoiExplore'
 import { useMergedMapPois } from '../components/Map/useMergedMapPois'
@@ -63,6 +64,7 @@ import { useTouchDragBridge } from '../hooks/useTouchDragBridge'
 const ReservationsPanel = lazyWithRetry(() => import('../components/Planner/ReservationsPanel'))
 const PackingListPanel = lazyWithRetry(() => import('../components/Packing/PackingListPanel'))
 const TodoListPanel = lazyWithRetry(() => import('../components/Todo/TodoListPanel'))
+const OutfitsPlannerPanel = lazyWithRetry(() => import('../components/Outfits/OutfitsPlannerPanel'))
 const FileManager = lazyWithRetry(() => import('../components/Files/FileManager'))
 const CostsPanel = lazyWithRetry(() => import('../components/Budget/CostsPanel'))
 // Named export, so it needs the extra hop. Importing it statically would keep the
@@ -113,10 +115,10 @@ function LazyPanel({ id, children, overlay }: { id: string; children: React.Reac
 }
 
 function ListsContainer({ tripId, packingItems, todoItems }: { tripId: number; packingItems: PackingItem[]; todoItems: TodoItem[] }) {
-  const [subTab, setSubTab] = useState<'packing' | 'todo'>(() => {
-    return (sessionStorage.getItem(`trip-lists-subtab-${tripId}`) as 'packing' | 'todo') || 'packing'
+  const [subTab, setSubTab] = useState<'packing' | 'todo' | 'outfits'>(() => {
+    return (sessionStorage.getItem(`trip-lists-subtab-${tripId}`) as 'packing' | 'todo' | 'outfits') || 'packing'
   })
-  const setSubTabPersist = (tab: 'packing' | 'todo') => { setSubTab(tab); sessionStorage.setItem(`trip-lists-subtab-${tripId}`, tab) }
+  const setSubTabPersist = (tab: 'packing' | 'todo' | 'outfits') => { setSubTab(tab); sessionStorage.setItem(`trip-lists-subtab-${tripId}`, tab) }
   const [importPackingSignal, setImportPackingSignal] = useState(0)
   const [clearCheckedSignal, setClearCheckedSignal] = useState(0)
   const [saveTemplateSignal, setSaveTemplateSignal] = useState(0)
@@ -124,10 +126,12 @@ function ListsContainer({ tripId, packingItems, todoItems }: { tripId: number; p
   const [packingView, setPackingView] = useState<'common' | 'personal'>('common')
   const { t } = useTranslation()
   const isAdmin = useAuthStore(s => s.user?.role === 'admin')
+  const outfits = useTripStore(s => s.outfits)
 
   const tabs = [
     { id: 'packing' as const, label: t('todo.subtab.packing'), icon: PackageCheck, count: packingItems.length },
     { id: 'todo' as const, label: t('todo.subtab.todo'), icon: ListTodo, count: todoItems.length },
+    { id: 'outfits' as const, label: t('todo.subtab.outfits', 'Outfits'), icon: Shirt, count: outfits.length },
   ]
 
   return (
@@ -238,6 +242,11 @@ function ListsContainer({ tripId, packingItems, todoItems }: { tripId: number; p
         {subTab === 'todo' && (
           <LazyPanel id="todo">
             <TodoListPanel tripId={tripId} items={todoItems} addItemSignal={addTodoSignal} />
+          </LazyPanel>
+        )}
+        {subTab === 'outfits' && (
+          <LazyPanel id="outfits">
+            <OutfitsPlannerPanel tripId={tripId} />
           </LazyPanel>
         )}
       </div>
@@ -960,6 +969,29 @@ function TripPlannerPageDesktop(): React.ReactElement | null {
               </div>,
               document.body
             )}
+
+            <PlanDocumentHost
+              tripId={tripId}
+              trip={trip}
+              days={days}
+              places={places}
+              categories={categories}
+              assignments={storedAssignments}
+              accommodations={tripAccommodations}
+              reservations={reservations}
+              locale={locale}
+              onSelectDay={handleSelectDay}
+              onPlaceClick={handlePlaceClick}
+              onEditPlace={openPlaceEditor}
+              onDayDetail={(day) => { setShowDayDetail(day); setSelectedPlaceId(null); selectAssignment(null) }}
+              onAddPlaceForDay={can('place_edit', trip) ? (dayId) => { setEditingPlace(null); setPlaceFormDayId(dayId); setShowPlaceForm(true) } : undefined}
+              onAddTransport={can('day_edit', trip) ? (dayId) => { setTransportModalDayId(dayId); setEditingTransport(null); setTransitPrefill(null); setTransportModalAutomated(false); setShowTransportModal(true) } : undefined}
+              onAddReservation={(dayId) => { setEditingReservation(null); tripActions.setSelectedDay(dayId); setShowReservationModal(true) }}
+              onAssignToDay={handleAssignToDay}
+              onRemoveAssignment={handleRemoveAssignment}
+              onReorder={handleReorder}
+              onDeletePlace={(placeId) => handleDeletePlace(placeId)}
+            />
           </div>
         )}
 

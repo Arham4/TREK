@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Briefcase, Check, CheckCheck, ChevronDown, ChevronUp, HandHelping,
   Download, LayoutTemplate, MoreHorizontal, Package, Pencil, Plus, RotateCcw, Save as SaveIcon, Trash2, UserPlus, UserRound,
+  Shirt,
 } from 'lucide-react'
 import MDancingTrek from '../../../components/MDancingTrek'
 import { useAuthStore } from '../../../../store/authStore'
@@ -796,6 +797,13 @@ function PackingItemRow({ item, planner, currentUserId, editMode, canEdit, bagTr
   const isPlaceholder = isPackingPlaceholder(item)
   const bag = item.bag_id != null ? bags.find(b => b.id === item.bag_id) : undefined
 
+  // Outfits wear count
+  const outfits = useTripStore(s => s.outfits)
+  const matchingOutfits = !isPlaceholder && outfits ? outfits.filter(o =>
+    o.items?.some(i => i.packing_item_id === item.id || (!i.packing_item_id && i.name.trim().toLowerCase() === item.name.trim().toLowerCase()))
+  ) : []
+  const outfitWearCount = matchingOutfits.length
+
   // Sharing badges (#858) mirror ArtikelZeile: is_private + ownership split the
   // three states, so exactly one (or none) ever applies.
   const recipients = item.recipients || []
@@ -843,6 +851,17 @@ function PackingItemRow({ item, planner, currentUserId, editMode, canEdit, bagTr
         <span className={`min-w-0 flex-1 truncate text-[0.8125rem] font-medium ${item.checked ? 'text-m-faint line-through opacity-45' : 'text-m-ink'}`}>
           {isPlaceholder ? t('packing.addItemPlaceholder') : item.name}
         </span>
+
+        {/* Outfit wear count badge */}
+        {!isPlaceholder && outfitWearCount > 0 && (
+          <span
+            className="flex flex-none items-center gap-[2px] rounded-full bg-[color:var(--m-ic)] px-[6px] py-[2px] font-geist text-[0.59375rem] font-bold text-accent"
+            title={t('outfits.wornCount', { count: outfitWearCount })}
+          >
+            <Shirt size={10} strokeWidth={2.2} />
+            {outfitWearCount}×
+          </span>
+        )}
 
         {/* Sharing state is an icon, not a sentence (#1525): "Taken care of by
             Alexander" spelled out took a third of the row away from the item

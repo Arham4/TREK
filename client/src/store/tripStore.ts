@@ -10,6 +10,7 @@ import { todoRepo } from '../repo/todoRepo'
 import { budgetRepo } from '../repo/budgetRepo'
 import { reservationRepo } from '../repo/reservationRepo'
 import { fileRepo } from '../repo/fileRepo'
+import { outfitsRepo } from '../repo/outfitsRepo'
 import { isEffectivelyOnline } from '../sync/networkMode'
 import { createPlacesSlice } from './slices/placesSlice'
 import { createAssignmentsSlice } from './slices/assignmentsSlice'
@@ -17,12 +18,13 @@ import { createDaysSlice } from './slices/daysSlice'
 import { createDayNotesSlice } from './slices/dayNotesSlice'
 import { createPackingSlice } from './slices/packingSlice'
 import { createTodoSlice } from './slices/todoSlice'
+import { createOutfitsSlice } from './slices/outfitsSlice'
 import { createBudgetSlice } from './slices/budgetSlice'
 import { createReservationsSlice } from './slices/reservationsSlice'
 import { createFilesSlice } from './slices/filesSlice'
 import { handleRemoteEvent } from './slices/remoteEventHandler'
 import type {
-  Trip, Day, Place, Assignment, DayNote, PackingItem, TodoItem,
+  Trip, Day, Place, Assignment, DayNote, PackingItem, TodoItem, Outfit,
   Tag, Category, BudgetItem, TripFile, Reservation,
   AssignmentsMap, DayNotesMap, WebSocketEvent,
 } from '../types'
@@ -33,6 +35,7 @@ import type { DaysSlice } from './slices/daysSlice'
 import type { DayNotesSlice } from './slices/dayNotesSlice'
 import type { PackingSlice } from './slices/packingSlice'
 import type { TodoSlice } from './slices/todoSlice'
+import type { OutfitsSlice } from './slices/outfitsSlice'
 import type { BudgetSlice } from './slices/budgetSlice'
 import type { ReservationsSlice } from './slices/reservationsSlice'
 import type { FilesSlice } from './slices/filesSlice'
@@ -44,6 +47,7 @@ export interface TripStoreState
     DayNotesSlice,
     PackingSlice,
     TodoSlice,
+    OutfitsSlice,
     BudgetSlice,
     ReservationsSlice,
     FilesSlice {
@@ -54,6 +58,7 @@ export interface TripStoreState
   dayNotes: DayNotesMap
   packingItems: PackingItem[]
   todoItems: TodoItem[]
+  outfits: Outfit[]
   tags: Tag[]
   categories: Category[]
   budgetItems: BudgetItem[]
@@ -89,6 +94,7 @@ export const useTripStore = create<TripStoreState>((set, get) => ({
   dayNotes: {},
   packingItems: [],
   todoItems: [],
+  outfits: [],
   tags: [],
   categories: [],
   budgetItems: [],
@@ -117,6 +123,7 @@ export const useTripStore = create<TripStoreState>((set, get) => ({
     dayNotes: {},
     packingItems: [],
     todoItems: [],
+    outfits: [],
     budgetItems: [],
     files: [],
     reservations: [],
@@ -130,12 +137,13 @@ export const useTripStore = create<TripStoreState>((set, get) => ({
     get().resetTrip()
     set({ isLoading: true, error: null })
     try {
-      const [tripData, daysData, placesData, packingData, todoData, budgetData, reservationsData, filesData, tagsData, categoriesData] = await Promise.all([
+      const [tripData, daysData, placesData, packingData, todoData, outfitsData, budgetData, reservationsData, filesData, tagsData, categoriesData] = await Promise.all([
         tripRepo.get(tripId),
         dayRepo.list(tripId),
         placeRepo.list(tripId),
         packingRepo.list(tripId),
         todoRepo.list(tripId),
+        outfitsRepo.list(tripId).catch(() => [] as Outfit[]),
         // Budget / reservations / files are hydrated here too so the offline
         // path is uniform (no separate tab-gated effects). Non-fatal: a failure
         // in any of these must not blank the whole trip.
@@ -165,6 +173,7 @@ export const useTripStore = create<TripStoreState>((set, get) => ({
         dayNotes: dayNotesMap,
         packingItems: packingData.items,
         todoItems: todoData.items,
+        outfits: outfitsData || [],
         budgetItems: budgetData.items,
         reservations: reservationsData.reservations,
         files: filesData.files,
@@ -269,6 +278,7 @@ export const useTripStore = create<TripStoreState>((set, get) => ({
   ...createDayNotesSlice(set, get),
   ...createPackingSlice(set, get),
   ...createTodoSlice(set, get),
+  ...createOutfitsSlice(set, get),
   ...createBudgetSlice(set, get),
   ...createReservationsSlice(set, get),
   ...createFilesSlice(set, get),

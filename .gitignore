@@ -72,3 +72,5 @@ minio-licence.key
 
 .run
 .full-review
+test-results/
+.agents/

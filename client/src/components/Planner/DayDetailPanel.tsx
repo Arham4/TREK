@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Sun, Cloud, CloudRain, CloudSnow, CloudDrizzle, CloudLightning, Wind, Droplets, Sunrise, Sunset, Hotel, Calendar, MapPin, LogIn, LogOut, Hash, Pencil, Plane, Utensils, Train, Car, Ship, Ticket, FileText, Users, ChevronsDown, ChevronsUp, TramFront, ParkingSquare } from 'lucide-react'
+import { X, Sun, Cloud, CloudRain, CloudSnow, CloudDrizzle, CloudLightning, Wind, Droplets, Sunrise, Sunset, Hotel, Calendar, MapPin, LogIn, LogOut, Hash, Pencil, Plane, Utensils, Train, Car, Ship, Ticket, FileText, Users, ChevronsDown, ChevronsUp, TramFront, ParkingSquare, Shirt } from 'lucide-react'
 
 const RES_TYPE_ICONS = { flight: Plane, hotel: Hotel, restaurant: Utensils, train: Train, car: Car, cruise: Ship, transit: TramFront, event: Ticket, tour: Users, parking: ParkingSquare, other: FileText }
 const RES_TYPE_COLORS = { flight: '#3b82f6', hotel: '#8b5cf6', restaurant: '#ef4444', train: '#06b6d4', car: '#6b7280', cruise: '#0ea5e9', transit: '#7c3aed', event: '#f59e0b', tour: '#10b981', parking: '#2563eb', other: '#6b7280' }
@@ -105,6 +105,8 @@ export default function DayDetailPanel({ day, days, places, categories = [], tri
   // Plugin-contributed columns/actions for the day view, keyed by day id (#plugins).
   // day can be null (panel closed) and hooks must run before the early return, so guard it.
   const dayContributions = usePluginViewContributions('day', tripId)(day?.id ?? -1)
+  const outfits = useTripStore((s) => s.outfits)
+  const dayOutfits = outfits.filter((o) => o.day_id === day?.id)
   // Plugins that declared a day-detail slot mount at the bottom of this panel,
   // scoped to the open day. Inline-filter like the place-detail site.
   const dayDetailPlugins = usePluginStore((s) => s.plugins).filter((p) => p.type === 'widget' && p.slot === 'day-detail')
@@ -353,6 +355,34 @@ export default function DayDetailPanel({ day, days, places, categories = [], tri
               setDayAccommodations={setDayAccommodations} setAccommodation={setAccommodation}
               handleSaveAccommodation={handleSaveAccommodation} onAccommodationChange={onAccommodationChange} />
           </div>
+
+          {/* ── Day Outfits ── */}
+          {dayOutfits.length > 0 && (
+            <div>
+              <div style={{ height: 1, background: 'var(--border-faint)', margin: '12px 0' }} />
+              <div className="text-content-faint" style={{ fontSize: 'calc(11px * var(--fs-scale-caption, 1))', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Shirt size={12} className="text-accent" />
+                <span>{t('outfits.title', 'Outfits')}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {dayOutfits.map((o) => (
+                  <div key={o.id} className="bg-surface-secondary" style={{ borderRadius: 10, padding: '8px 10px', fontSize: 'calc(12px * var(--fs-scale-body, 1))' }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span className="text-content">{o.title}</span>
+                      {o.time_of_day && <span className="text-content-faint" style={{ fontSize: 'calc(10px * var(--fs-scale-caption, 1))' }}>{o.time_of_day}</span>}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {o.items.map((it) => (
+                        <span key={it.id} className="bg-surface-card text-content" style={{ borderRadius: 6, padding: '2px 6px', fontSize: 'calc(11px * var(--fs-scale-caption, 1))', border: '1px solid var(--border-edge)' }}>
+                          {it.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Day-detail plugin slots: sandboxed, scoped to this day. */}
           {dayDetailPlugins.length > 0 && (

@@ -153,6 +153,11 @@ export const TREK_WS_EVENTS = {
   'todo:created': { scope: 'trip', payload: z.object({ item: entity }) },
   'todo:updated': { scope: 'trip', payload: z.object({ item: entity }) },
   'todo:deleted': { scope: 'trip', payload: z.object({ itemId: id }) },
+
+  // ── Outfits ──────────────────────────────────────────────────────────────
+  'outfit:created': { scope: 'trip', payload: z.object({ outfit: entity }) },
+  'outfit:updated': { scope: 'trip', payload: z.object({ outfit: entity }) },
+  'outfit:deleted': { scope: 'trip', payload: z.object({ outfitId: id }) },
   'todo:assignees': {
     scope: 'trip',
     payload: z.object({ category: z.string(), assignees: z.array(z.unknown()) }),

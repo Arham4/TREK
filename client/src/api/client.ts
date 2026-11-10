@@ -33,6 +33,8 @@ import {
   type BudgetCreateItemRequest, type BudgetUpdateItemRequest,
   type PackingCreateItemRequest, type PackingUpdateItemRequest, type PackingSetSharingRequest,
   type TodoCreateItemRequest, type TodoUpdateItemRequest,
+  type CreateOutfitRequest, type UpdateOutfitRequest, type CopyOutfitRequest, type AddOutfitItemRequest,
+  type Outfit, type OutfitItem, type OutfitInventoryItem,
   type AssignmentCreateRequest, type AssignmentNotesRequest, type AssignmentParticipantsRequest, type AssignmentTimeRequest, type AssignmentTransportRequest,
   type PlaceBulkDeleteRequest,
   type PlaceBulkUpdateRequest,
@@ -550,6 +552,27 @@ export const todoApi = {
   reorder: (tripId: number | string, orderedIds: number[]) => apiClient.put(`/trips/${tripId}/todo/reorder`, { orderedIds } satisfies TodoReorderRequest).then(r => r.data),
   getCategoryAssignees: (tripId: number | string) => apiClient.get(`/trips/${tripId}/todo/category-assignees`).then(r => r.data),
   setCategoryAssignees: (tripId: number | string, categoryName: string, userIds: number[]) => apiClient.put(`/trips/${tripId}/todo/category-assignees/${encodeURIComponent(categoryName)}`, { user_ids: userIds } satisfies TodoCategoryAssigneesRequest).then(r => r.data),
+}
+
+export const outfitsApi = {
+  list: (tripId: number | string, params?: { dayId?: number; userId?: number }): Promise<Outfit[]> =>
+    apiClient.get(`/trips/${tripId}/outfits`, { params }).then(r => r.data),
+  inventory: (tripId: number | string, userId?: number): Promise<OutfitInventoryItem[]> =>
+    apiClient.get(`/trips/${tripId}/outfits/inventory`, { params: userId ? { userId } : undefined }).then(r => r.data),
+  getOne: (tripId: number | string, id: number | string): Promise<Outfit> =>
+    apiClient.get(`/trips/${tripId}/outfits/${id}`).then(r => r.data),
+  create: (tripId: number | string, data: CreateOutfitRequest): Promise<Outfit> =>
+    apiClient.post(`/trips/${tripId}/outfits`, data).then(r => r.data),
+  update: (tripId: number | string, id: number | string, data: UpdateOutfitRequest): Promise<Outfit> =>
+    apiClient.put(`/trips/${tripId}/outfits/${id}`, data).then(r => r.data),
+  delete: (tripId: number | string, id: number | string): Promise<{ ok: boolean }> =>
+    apiClient.delete(`/trips/${tripId}/outfits/${id}`).then(r => r.data),
+  copy: (tripId: number | string, id: number | string, data: CopyOutfitRequest): Promise<Outfit> =>
+    apiClient.post(`/trips/${tripId}/outfits/${id}/copy`, data).then(r => r.data),
+  addItem: (tripId: number | string, id: number | string, data: AddOutfitItemRequest): Promise<OutfitItem> =>
+    apiClient.post(`/trips/${tripId}/outfits/${id}/items`, data).then(r => r.data),
+  deleteItem: (tripId: number | string, id: number | string, itemId: number | string): Promise<{ ok: boolean }> =>
+    apiClient.delete(`/trips/${tripId}/outfits/${id}/items/${itemId}`).then(r => r.data),
 }
 
 export const tagsApi = {

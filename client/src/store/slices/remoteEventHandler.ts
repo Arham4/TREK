@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand'
 import type { TrekWsTripEventName } from '@trek/shared'
 import type { TripStoreState } from '../tripStore'
-import type { Assignment, Place, Day, DayNote, PackingItem, TodoItem, BudgetItem, BudgetItemMember, Reservation, Trip, TripFile, WebSocketEvent } from '../../types'
+import type { Assignment, Place, Day, DayNote, PackingItem, TodoItem, BudgetItem, BudgetItemMember, Reservation, Trip, TripFile, WebSocketEvent, Outfit } from '../../types'
 import { offlineDb } from '../../db/offlineDb'
 import { useAuthStore } from '../authStore'
 import { mergeAssignmentPlace } from './placesSlice'
@@ -129,6 +129,17 @@ export const DEXIE_WRITERS: Partial<Record<TrekWsTripEventName, DexieWriter>> = 
   'todo:updated': putTodoItem,
   'todo:deleted': async payload => {
     await offlineDb.todoItems.delete(payload.itemId as number)
+  },
+
+  // ── Outfits ──────────────────────────────────────────────────────────────
+  'outfit:created': async payload => {
+    await offlineDb.outfits.put(payload.outfit as Outfit)
+  },
+  'outfit:updated': async payload => {
+    await offlineDb.outfits.put(payload.outfit as Outfit)
+  },
+  'outfit:deleted': async payload => {
+    await offlineDb.outfits.delete(Number(payload.outfitId))
   },
 
   // ── Budget ───────────────────────────────────────────────────────────────
@@ -397,6 +408,20 @@ export const STATE_APPLIERS: Partial<Record<TrekWsTripEventName, StateApplier>> 
   }),
   'todo:deleted': (payload, state) => ({
     todoItems: state.todoItems.filter(i => i.id !== payload.itemId),
+  }),
+
+  // Outfits
+  'outfit:created': (payload, state) => {
+    const outfit = payload.outfit as Outfit
+    if (state.outfits.some(o => o.id === outfit.id)) return {}
+    return { outfits: [...state.outfits, outfit] }
+  },
+  'outfit:updated': (payload, state) => {
+    const outfit = payload.outfit as Outfit
+    return { outfits: state.outfits.map(o => o.id === outfit.id ? outfit : o) }
+  },
+  'outfit:deleted': (payload, state) => ({
+    outfits: state.outfits.filter(o => o.id !== Number(payload.outfitId)),
   }),
 
   // Budget

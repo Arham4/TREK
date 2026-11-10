@@ -51,6 +51,9 @@ const FIXTURES: Record<TrekWsEventName, Record<string, unknown>> = {
   'todo:created': { item: { id: 4 } },
   'todo:updated': { item: { id: 4 } },
   'todo:deleted': { itemId: 4 },
+  'outfit:created': { outfit: { id: 5 } },
+  'outfit:updated': { outfit: { id: 5 } },
+  'outfit:deleted': { outfitId: 5 },
   'todo:assignees': { category: 'before', assignees: [1] },
   'budget:created': { item: { id: 11 } },
   'budget:updated': { item: { id: 11 } },
@@ -145,14 +148,15 @@ const DRIFT_VARIANTS: Partial<Record<TrekWsEventName, Record<string, unknown>[]>
 };
 
 describe('@trek/shared realtime event registry', () => {
-  it('WSEVT-REG-001: pins the authoritative inventory counts (74 trip + 32 user = 106)', () => {
+  it('WSEVT-REG-001: pins the authoritative inventory counts (77 trip + 32 user = 109)', () => {
     // 67th to 69th trip event: the three collab:link:* a shared link emits.
     // 70th and 71st: the road trip's vias and tracks, which used to be written silently.
     // 74th: docsync:changed, so a sync run that moved documents refreshes the
     // panel without every member polling for it.
-    expect(TREK_WS_TRIP_EVENT_NAMES).toHaveLength(74);
+    // 75th-77th: outfit:created, outfit:updated, outfit:deleted.
+    expect(TREK_WS_TRIP_EVENT_NAMES).toHaveLength(77);
     expect(TREK_WS_USER_EVENT_NAMES).toHaveLength(32);
-    expect(TREK_WS_EVENT_NAMES).toHaveLength(106);
+    expect(TREK_WS_EVENT_NAMES).toHaveLength(109);
   });
 
   it('WSEVT-REG-002: every name is domain:action shaped and outside the reserved plugin: namespace', () => {
