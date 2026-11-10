@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { db } from '../../db/database';
 import { PermissionsService } from '../permissions/permissions.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { TripAccessService } from '../trip-membership/trip-access.service';
 import type {
   Outfit,
   OutfitItem,
@@ -13,19 +14,25 @@ import type {
 } from '@trek/shared';
 import type { Trip, User } from '../../types';
 
+const dbHelper = {
+  all: <T = any>(sql: string, ...params: any[]): T[] => db.prepare(sql).all(...params) as T[],
+  get: <T = any>(sql: string, ...params: any[]): T | undefined => db.prepare(sql).get(...params) as T | undefined,
+  run: (sql: string, ...params: any[]) => db.prepare(sql).run(...params),
+};
+
 @Injectable()
 export class OutfitsService {
   constructor(
-    private readonly db: DatabaseService,
     private readonly permissions: PermissionsService,
     private readonly realtime: RealtimeService,
+    private readonly tripsRepo: TripAccessService,
   ) {}
 
-  verifyTripAccess(tripId: string | number, userId: number) {
-    return this.db.canAccessTrip(tripId, userId);
+  async verifyTripAccess(tripId: string | number, userId: number) {
+    return await this.tripsRepo.findAccessible(tripId, userId);
   }
 
-  canEdit(trip: Trip, user: User): boolean {
+  async canEdit(trip: Trip, user: User): Promise<boolean> {
     return this.permissions.checkPermission('packing_edit', user.role, trip.user_id, user.id, trip.user_id !== user.id);
   }
 
@@ -48,7 +55,7 @@ export class OutfitsService {
 
     query += ' ORDER BY day_id ASC, sort_order ASC, id ASC';
 
-    const rawOutfits = this.db.all<any>(query, ...params);
+    const rawOutfits = dbHelper.all<any>(query, ...params);
     if (!rawOutfits || rawOutfits.length === 0) return [];
 
     const outfitIds = rawOutfits.map((o) => o.id);
@@ -61,7 +68,7 @@ export class OutfitsService {
       WHERE oi.outfit_id IN (${placeholders})
       ORDER BY oi.sort_order ASC, oi.id ASC
     `;
-    const rawItems = this.db.all<any>(itemsQuery, ...outfitIds);
+    const rawItems = dbHelper.all<any>(itemsQuery, ...outfitIds);
 
     const itemsByOutfit: Record<number, OutfitItem[]> = {};
     for (const item of rawItems) {
@@ -96,10 +103,10 @@ export class OutfitsService {
   }
 
   getOutfitById(tripId: number | string, outfitId: number | string): Outfit | null {
-    const rawOutfit = this.db.get<any>('SELECT * FROM outfits WHERE id = ? AND trip_id = ?', outfitId, tripId);
+    const rawOutfit = dbHelper.get<any>('SELECT * FROM outfits WHERE id = ? AND trip_id = ?', outfitId, tripId);
     if (!rawOutfit) return null;
 
-    const items = this.db.all<any>(
+    const items = dbHelper.all<any>(
       `SELECT oi.*, pi.checked AS packing_item_checked, pi.category AS packing_item_category
        FROM outfit_items oi
        LEFT JOIN packing_items pi ON oi.packing_item_id = pi.id
@@ -136,10 +143,10 @@ export class OutfitsService {
 
   createOutfit(tripId: number | string, data: CreateOutfitRequest, socketId?: string): Outfit {
     const numTripId = Number(tripId);
-    const day = this.db.get<{ id: number }>('SELECT id FROM days WHERE id = ? AND trip_id = ?', data.day_id, numTripId);
+    const day = dbHelper.get<{ id: number }>('SELECT id FROM days WHERE id = ? AND trip_id = ?', data.day_id, numTripId);
     if (!day) throw new NotFoundException('Day not found for this trip');
 
-    const maxOrder = this.db.get<{ max: number | null }>(
+    const maxOrder = dbHelper.get<{ max: number | null }>(
       'SELECT MAX(sort_order) as max FROM outfits WHERE trip_id = ? AND day_id = ? AND user_id = ?',
       numTripId,
       data.day_id,
@@ -147,7 +154,7 @@ export class OutfitsService {
     )!;
     const sortOrder = (maxOrder.max !== null && maxOrder.max !== undefined ? maxOrder.max : -1) + 1;
 
-    const res = this.db.run(
+    const res = dbHelper.run(
       `INSERT INTO outfits (trip_id, day_id, user_id, title, time_of_day, notes, sort_order)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       numTripId,
@@ -166,7 +173,7 @@ export class OutfitsService {
         let packingItemId = it.packing_item_id || null;
 
         if (it.create_packing_item && !packingItemId) {
-          const packRes = this.db.run(
+          const packRes = dbHelper.run(
             `INSERT INTO packing_items (trip_id, name, checked, category, sort_order, is_private, owner_id)
              VALUES (?, ?, 0, 'Clothing', 0, 1, ?)`,
             numTripId,
@@ -176,7 +183,7 @@ export class OutfitsService {
           packingItemId = Number(packRes.lastInsertRowid);
         }
 
-        this.db.run(
+        dbHelper.run(
           `INSERT INTO outfit_items (outfit_id, trip_id, name, packing_item_id, category, sort_order)
            VALUES (?, ?, ?, ?, ?, ?)`,
           outfitId,
@@ -198,7 +205,7 @@ export class OutfitsService {
     const numTripId = Number(tripId);
     const numOutfitId = Number(outfitId);
 
-    const existing = this.db.get<{ id: number }>('SELECT id FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
+    const existing = dbHelper.get<{ id: number }>('SELECT id FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
     if (!existing) throw new NotFoundException('Outfit not found');
 
     const fields: string[] = ['updated_at = CURRENT_TIMESTAMP'];
@@ -226,7 +233,7 @@ export class OutfitsService {
     }
 
     params.push(numOutfitId, numTripId);
-    this.db.run(`UPDATE outfits SET ${fields.join(', ')} WHERE id = ? AND trip_id = ?`, ...params);
+    dbHelper.run(`UPDATE outfits SET ${fields.join(', ')} WHERE id = ? AND trip_id = ?`, ...params);
 
     const updated = this.getOutfitById(numTripId, numOutfitId)!;
     this.broadcast(numTripId, 'outfit:updated', { tripId: numTripId, outfit: updated }, socketId);
@@ -237,10 +244,10 @@ export class OutfitsService {
     const numTripId = Number(tripId);
     const numOutfitId = Number(outfitId);
 
-    const existing = this.db.get<{ id: number }>('SELECT id FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
+    const existing = dbHelper.get<{ id: number }>('SELECT id FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
     if (!existing) throw new NotFoundException('Outfit not found');
 
-    this.db.run('DELETE FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
+    dbHelper.run('DELETE FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
     this.broadcast(numTripId, 'outfit:deleted', { tripId: numTripId, outfitId: numOutfitId }, socketId);
     return true;
   }
@@ -253,7 +260,7 @@ export class OutfitsService {
     const targetDayId = data.target_day_id;
     const targetUserId = data.target_user_id || source.user_id;
 
-    const maxOrder = this.db.get<{ max: number | null }>(
+    const maxOrder = dbHelper.get<{ max: number | null }>(
       'SELECT MAX(sort_order) as max FROM outfits WHERE trip_id = ? AND day_id = ? AND user_id = ?',
       numTripId,
       targetDayId,
@@ -261,7 +268,7 @@ export class OutfitsService {
     )!;
     const sortOrder = (maxOrder.max !== null && maxOrder.max !== undefined ? maxOrder.max : -1) + 1;
 
-    const res = this.db.run(
+    const res = dbHelper.run(
       `INSERT INTO outfits (trip_id, day_id, user_id, title, time_of_day, notes, sort_order)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       numTripId,
@@ -275,7 +282,7 @@ export class OutfitsService {
     const newOutfitId = Number(res.lastInsertRowid);
 
     for (const it of source.items) {
-      this.db.run(
+      dbHelper.run(
         `INSERT INTO outfit_items (outfit_id, trip_id, name, packing_item_id, category, sort_order)
          VALUES (?, ?, ?, ?, ?, ?)`,
         newOutfitId,
@@ -296,13 +303,13 @@ export class OutfitsService {
     const numTripId = Number(tripId);
     const numOutfitId = Number(outfitId);
 
-    const outfit = this.db.get<{ id: number; user_id: number }>('SELECT id, user_id FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
+    const outfit = dbHelper.get<{ id: number; user_id: number }>('SELECT id, user_id FROM outfits WHERE id = ? AND trip_id = ?', numOutfitId, numTripId);
     if (!outfit) throw new NotFoundException('Outfit not found');
 
     let packingItemId = item.packing_item_id || null;
 
     if (item.create_packing_item && !packingItemId) {
-      const packRes = this.db.run(
+      const packRes = dbHelper.run(
         `INSERT INTO packing_items (trip_id, name, checked, category, sort_order, is_private, owner_id)
          VALUES (?, ?, 0, 'Clothing', 0, 1, ?)`,
         numTripId,
@@ -312,10 +319,10 @@ export class OutfitsService {
       packingItemId = Number(packRes.lastInsertRowid);
     }
 
-    const maxOrder = this.db.get<{ max: number | null }>('SELECT MAX(sort_order) as max FROM outfit_items WHERE outfit_id = ?', numOutfitId)!;
+    const maxOrder = dbHelper.get<{ max: number | null }>('SELECT MAX(sort_order) as max FROM outfit_items WHERE outfit_id = ?', numOutfitId)!;
     const sortOrder = (maxOrder.max !== null && maxOrder.max !== undefined ? maxOrder.max : -1) + 1;
 
-    const res = this.db.run(
+    const res = dbHelper.run(
       `INSERT INTO outfit_items (outfit_id, trip_id, name, packing_item_id, category, sort_order)
        VALUES (?, ?, ?, ?, ?, ?)`,
       numOutfitId,
@@ -347,10 +354,10 @@ export class OutfitsService {
     const numOutfitId = Number(outfitId);
     const numItemId = Number(itemId);
 
-    const item = this.db.get<{ id: number }>('SELECT id FROM outfit_items WHERE id = ? AND outfit_id = ? AND trip_id = ?', numItemId, numOutfitId, numTripId);
+    const item = dbHelper.get<{ id: number }>('SELECT id FROM outfit_items WHERE id = ? AND outfit_id = ? AND trip_id = ?', numItemId, numOutfitId, numTripId);
     if (!item) throw new NotFoundException('Outfit item not found');
 
-    this.db.run('DELETE FROM outfit_items WHERE id = ? AND outfit_id = ? AND trip_id = ?', numItemId, numOutfitId, numTripId);
+    dbHelper.run('DELETE FROM outfit_items WHERE id = ? AND outfit_id = ? AND trip_id = ?', numItemId, numOutfitId, numTripId);
 
     const updatedOutfit = this.getOutfitById(numTripId, numOutfitId);
     if (updatedOutfit) {
@@ -364,7 +371,7 @@ export class OutfitsService {
     const numUserId = Number(userId);
 
     // Personal packing items of this user or common clothing items
-    const packingItems = this.db.all<any>(
+    const packingItems = dbHelper.all<any>(
       `SELECT id, name, category, checked
        FROM packing_items
        WHERE trip_id = ?
@@ -375,7 +382,7 @@ export class OutfitsService {
     );
 
     // Outfits worn by this user, joined with days
-    const wearHistory = this.db.all<any>(
+    const wearHistory = dbHelper.all<any>(
       `SELECT oi.packing_item_id, oi.name, d.day_number
        FROM outfit_items oi
        JOIN outfits o ON oi.outfit_id = o.id

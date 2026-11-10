@@ -1,7 +1,7 @@
 import type { MTabScreenProps } from './tabModel'
 import MPackingListTab from './MPackingListTab'
 import MTodoListTab from './MTodoListTab'
-import { OutfitsPlannerPanel } from '../../../components/Outfits/OutfitsPlannerPanel'
+import { OutfitsPlannerPanel } from '../../../../components/Outfits/OutfitsPlannerPanel'
 
 /**
  * Tab 4 — Listen (spec 03 §4). The header segmented switcher (Packing/To-do/Outfits,

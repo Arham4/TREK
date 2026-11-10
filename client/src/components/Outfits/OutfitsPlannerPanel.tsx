@@ -13,6 +13,7 @@ import type { Outfit, OutfitItem, OutfitInventoryItem, Day } from '../../types'
 
 interface OutfitsPlannerPanelProps {
   tripId: number
+  canEdit?: boolean
 }
 
 interface TripMemberInfo {
@@ -32,7 +33,7 @@ const PRESET_TITLES = [
   { label: 'Travel', icon: Plane },
 ]
 
-export default function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
+export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
   const { t } = useTranslation()
   const toast = useToast()
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -661,3 +662,6 @@ export default function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps
     </div>
   )
 }
+
+export default OutfitsPlannerPanel
+

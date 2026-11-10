@@ -5,12 +5,10 @@ import {
   TOOL_ANNOTATIONS_READONLY,
   TOOL_ANNOTATIONS_NON_IDEMPOTENT,
   TOOL_ANNOTATIONS_DELETE,
-  demoDenied,
   ok,
 } from '../../nest-mcp';
 import { McpToolGuardsService } from '../mcp-shared/mcp-tool-guards.service';
 import { z } from 'zod';
-import { AuthService } from '../auth/auth.service';
 import { noAccess, permissionDenied } from '../../mcp/tools/_shared';
 import { OutfitsService } from './outfits.service';
 
@@ -18,7 +16,6 @@ import { OutfitsService } from './outfits.service';
 export class OutfitsMcp {
   constructor(
     private readonly outfits: OutfitsService,
-    private readonly auth: AuthService,
     private readonly guards: McpToolGuardsService,
   ) {}
 
@@ -37,7 +34,7 @@ export class OutfitsMcp {
     { tripId, dayId, userId }: { tripId: number; dayId?: number; userId?: number },
     ctx: McpContext,
   ) {
-    if (!this.outfits.verifyTripAccess(tripId, ctx.userId)) return noAccess();
+    if (!(await this.outfits.verifyTripAccess(tripId, ctx.userId))) return noAccess();
     const outfits = this.outfits.listOutfits(tripId, dayId, userId);
     return ok(outfits);
   }
@@ -84,8 +81,7 @@ export class OutfitsMcp {
     },
     ctx: McpContext,
   ) {
-    if (this.auth.isDemoUser(ctx.userId)) return demoDenied();
-    if (!this.outfits.verifyTripAccess(tripId, ctx.userId)) return noAccess();
+    if (!(await this.outfits.verifyTripAccess(tripId, ctx.userId))) return noAccess();
     if (!this.guards.hasTripPermission('packing_edit', tripId, ctx.userId)) return permissionDenied();
 
     const created = this.outfits.createOutfit(tripId, {
@@ -118,8 +114,7 @@ export class OutfitsMcp {
     { tripId, outfitId }: { tripId: number; outfitId: number },
     ctx: McpContext,
   ) {
-    if (this.auth.isDemoUser(ctx.userId)) return demoDenied();
-    if (!this.outfits.verifyTripAccess(tripId, ctx.userId)) return noAccess();
+    if (!(await this.outfits.verifyTripAccess(tripId, ctx.userId))) return noAccess();
     if (!this.guards.hasTripPermission('packing_edit', tripId, ctx.userId)) return permissionDenied();
 
     this.outfits.deleteOutfit(tripId, outfitId);
@@ -140,7 +135,7 @@ export class OutfitsMcp {
     { tripId, userId }: { tripId: number; userId: number },
     ctx: McpContext,
   ) {
-    if (!this.outfits.verifyTripAccess(tripId, ctx.userId)) return noAccess();
+    if (!(await this.outfits.verifyTripAccess(tripId, ctx.userId))) return noAccess();
     const inv = this.outfits.getClothingInventory(tripId, userId);
     return ok(inv);
   }
