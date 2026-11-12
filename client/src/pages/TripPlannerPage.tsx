@@ -118,7 +118,7 @@ function TripPlannerPageDesktop(): React.ReactElement | null {
     handleSelectDay, handlePlaceClick, handleMarkerClick, handleMapClick, handleMapContextMenu, handlePoiClick,
     handleSavePlace, openPlaceEditor, handleDeletePlace, confirmDeletePlace, confirmDeletePlaces, confirmChangeCategory,
     handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleReorderDays, handleAddDay, dayAdd,
-    handleDeleteTour, handleUpdateDayTitle, deleteDayQuestion, handleDeleteDay,
+    handleDeleteTour, handleUpdateDayTitle, handleUpdateAssignmentNotes, deleteDayQuestion, handleDeleteDay,
     clearDayId, clearDayTitle, handleClearDay, cancelClearDay, confirmClearDay, tourDayQuestion, answerTourDay,
     handleSaveReservation, handleSaveTransport, handleDeleteReservation,
     selectedPlace, dayOrderMap, dayPlaces,
@@ -626,7 +626,7 @@ function TripPlannerPageDesktop(): React.ReactElement | null {
               assignments={storedAssignments}
               accommodations={tripAccommodations}
               reservations={reservations}
-              locale={locale}
+              locale={language}
               onSelectDay={handleSelectDay}
               onPlaceClick={handlePlaceClick}
               onEditPlace={openPlaceEditor}
@@ -637,6 +637,10 @@ function TripPlannerPageDesktop(): React.ReactElement | null {
               onAssignToDay={handleAssignToDay}
               onRemoveAssignment={handleRemoveAssignment}
               onReorder={handleReorder}
+              onMoveToDay={handleMoveToDay}
+              onUpdateDayTitle={handleUpdateDayTitle}
+              onUpdateAssignmentNotes={handleUpdateAssignmentNotes}
+              onClearAssignmentTime={(dayId, assignmentId) => tripActions.setAssignmentTimes(tripId, dayId, assignmentId, { place_time: null, end_time: null })}
               onDeletePlace={(placeId) => handleDeletePlace(placeId)}
             />
           </div>

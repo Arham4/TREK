@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Calendar, MapPin, Sparkles, Search, Filter, Ticket,
-  Map, PanelLeftOpen, X, CheckCircle2
+  Map, PanelLeftOpen, X, CheckCircle2, List, SlidersHorizontal
 } from 'lucide-react'
 import type { UseDocumentViewOptions } from './useDocumentView'
 import { useDocumentView } from './useDocumentView'
@@ -10,17 +11,39 @@ import { DocumentDaySection } from './DocumentDaySection'
 import { DocumentUnassignedDrawer } from './DocumentUnassignedDrawer'
 import { formatDate } from '../../../utils/formatters'
 import { useDocI18n } from './docI18n'
+import './documentPrint.css'
 
 export interface PlanDocumentViewProps extends UseDocumentViewOptions {
   onSwitchToMap: () => void
   locale?: string
 }
 
+/**
+ * Where the document was scrolled to, per trip, while this module lives.
+ * Toggling to the map unmounts the document; coming back should land on the
+ * day the reader was on, not at the hero banner again.
+ */
+const scrollMemory: Record<number, number> = {}
+
 export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
   const { onSwitchToMap, locale = 'en' } = props
   const strings = useDocI18n()
   const doc = useDocumentView(props)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false)
+
+  // Restore the offset this trip's document was left at (view toggle, remount).
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const saved = scrollMemory[props.tripId]
+    if (saved && saved > 0) {
+      // After the first paint, so the day sections have their real heights.
+      const frame = requestAnimationFrame(() => { container.scrollTop = saved })
+      return () => cancelAnimationFrame(frame)
+    }
+    return undefined
+  }, [props.tripId])
 
   // Scroll spy to highlight active day in the rail
   useEffect(() => {
@@ -28,6 +51,7 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
     if (!container) return
 
     const handleScroll = () => {
+      scrollMemory[props.tripId] = container.scrollTop
       const daySections = doc.filteredDays.map(d => ({
         id: d.id,
         el: document.getElementById(`doc-day-${d.id}`),
@@ -45,7 +69,7 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
 
     container.addEventListener('scroll', handleScroll, { passive: true })
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [doc.filteredDays, doc.setActiveDayId])
+  }, [doc.filteredDays, doc.setActiveDayId, props.tripId])
 
   // Total stop counter
   const totalStops = Array.from(doc.mergedItemsMap.values()).reduce((sum, items) => {
@@ -173,7 +197,7 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
           </header>
 
           {/* ── Sticky Toolbar: Search + View Modes ── */}
-          <div className="sticky top-0 z-20 mb-8 py-2.5 bg-surface/90 backdrop-blur-md flex items-center justify-between gap-3 flex-wrap border-b border-edge-faint">
+          <div data-print-hide className="sticky top-0 z-20 mb-8 py-2.5 bg-surface/90 backdrop-blur-md flex items-center justify-between gap-3 flex-wrap border-b border-edge-faint">
             <div className="relative flex-1 min-w-[200px]">
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-faint pointer-events-none" />
               <input
@@ -196,6 +220,20 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => doc.setCompactMode(v => !v)}
+                aria-pressed={doc.compactMode}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium border transition-colors cursor-pointer ${
+                  doc.compactMode
+                    ? 'bg-surface-card text-content-muted hover:text-content border-edge-faint'
+                    : 'bg-accent text-accent-text border-accent shadow-xs'
+                }`}
+                title={doc.compactMode ? 'Switch to detailed cards' : 'Switch to compact rows'}
+              >
+                <SlidersHorizontal size={12} />
+                <span>{doc.compactMode ? 'Compact' : 'Detailed'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => doc.setShowOnlyActiveDays(v => !v)}
@@ -244,6 +282,13 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
                 onAddPlaceForDay={props.onAddPlaceForDay}
                 onAddTransport={props.onAddTransport}
                 onAddReservation={props.onAddReservation}
+                places={props.places}
+                onAssignToDay={doc.onAssignToDay}
+                onMoveAssignment={doc.onMoveToDay}
+                onReorderDay={props.onReorder}
+                onUpdateDayTitle={props.onUpdateDayTitle}
+                onUpdateNotes={props.onUpdateAssignmentNotes}
+                onClearAssignmentTime={doc.onClearAssignmentTime}
               />
             ))}
           </div>
@@ -271,6 +316,49 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
         onAssignToDay={props.onAssignToDay}
         onPlaceClick={props.onPlaceClick}
       />
+
+      {/* ── Phone / tablet outline: the rail's own menu, since the rail is desktop-only ── */}
+      <button
+        type="button"
+        data-testid="doc-mobile-outline-toggle"
+        onClick={() => setMobileOutlineOpen(true)}
+        aria-label={strings.outlineOpen}
+        title={strings.outlineOpen}
+        className="lg:hidden absolute z-30 inline-flex items-center gap-1.5 rounded-full border border-edge bg-surface-card/95 px-3.5 py-2 text-caption font-semibold text-content shadow-lg backdrop-blur-md"
+        style={{ right: 14, bottom: 'calc(var(--bottom-nav-h, 0px) + 16px)' }}
+      >
+        <List size={15} className="text-accent" />
+        <span>{doc.activeDayId ? `${strings.statsDays} · ${doc.sortedDays.findIndex(d => d.id === doc.activeDayId) + 1 || 1}` : strings.outlineTitle}</span>
+      </button>
+
+      {mobileOutlineOpen && createPortal(
+        <div className="lg:hidden fixed inset-0 z-[60]" data-print-hide data-testid="doc-mobile-outline-drawer">
+          <div
+            role="presentation"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileOutlineOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 flex w-[min(19rem,86vw)] flex-col bg-surface shadow-2xl">
+            <DocumentOutlineRail
+              variant="drawer"
+              trip={props.trip}
+              days={doc.sortedDays}
+              activeDayId={doc.activeDayId}
+              mergedItemsMap={doc.mergedItemsMap}
+              unassignedCount={doc.unassignedPlaces.length}
+              unassignedOpen={doc.unassignedDrawerOpen}
+              onToggleUnassigned={() => doc.setUnassignedDrawerOpen(v => !v)}
+              onSelectDay={id => { doc.scrollToDay(id); setMobileOutlineOpen(false) }}
+              compactMode={doc.compactMode}
+              onToggleCompact={() => doc.setCompactMode(v => !v)}
+              onSwitchToMap={onSwitchToMap}
+              onClose={() => setMobileOutlineOpen(false)}
+              locale={doc.locale}
+            />
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

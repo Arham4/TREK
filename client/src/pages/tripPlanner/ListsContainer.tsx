@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { PackageCheck, ListTodo, ListPlus, Download, Plus, FolderPlus } from 'lucide-react'
+import { PackageCheck, ListTodo, ListPlus, Download, Plus, FolderPlus, Shirt } from 'lucide-react'
 import ApplyTemplateButton from '../../components/Packing/ApplyTemplateButton'
 import PackingExportMenu from '../../components/Packing/PackingExportMenu'
 import { useTranslation } from '../../i18n'
@@ -8,7 +8,7 @@ import { useTripStore } from '../../store/tripStore'
 import { useCanDo } from '../../store/permissionsStore'
 import { useListsSubTab } from '../../hooks/useListsSubTab'
 import type { PackingItem, TodoItem } from '../../types'
-import { PackingListPanel, TodoListPanel } from './plannerLazy'
+import { PackingListPanel, TodoListPanel, OutfitsPlannerPanel } from './plannerLazy'
 import { LazyPanel } from './LazyPanel'
 
 export function ListsContainer({ tripId, packingItems, todoItems }: Readonly<{ tripId: number; packingItems: PackingItem[]; todoItems: TodoItem[] }>) {
@@ -21,16 +21,19 @@ export function ListsContainer({ tripId, packingItems, todoItems }: Readonly<{ t
   const { t } = useTranslation()
   const isAdmin = useAuthStore(s => s.user?.role === 'admin')
   const trip = useTripStore(s => s.trip)
+  const outfits = useTripStore(s => s.outfits) || []
   const canEditPacking = useCanDo()('packing_edit', trip)
 
   const tabs = [
     { id: 'packing' as const, label: t('todo.subtab.packing'), icon: PackageCheck, count: packingItems.length },
     { id: 'todo' as const, label: t('todo.subtab.todo'), icon: ListTodo, count: todoItems.length },
+    { id: 'outfits' as const, label: t('todo.subtab.outfits'), icon: Shirt, count: outfits.length },
   ]
 
   // The to-do view fills what is left under the bar, so its list and detail pane
-  // scroll inside the screen and the pane's buttons stay in sight.
-  const fill = subTab === 'todo'
+  // scroll inside the screen and the pane's buttons stay in sight. The wardrobe
+  // planner is built the same way: its own toolbar stays put and the days scroll.
+  const fill = subTab === 'todo' || subTab === 'outfits'
   return (
     <div style={fill ? { display: 'flex', flexDirection: 'column', height: '100%' } : undefined}>
       <div style={{ padding: '24px 28px 0', flexShrink: 0 }} className="max-md:!px-4 max-md:!pt-4">
@@ -142,6 +145,11 @@ export function ListsContainer({ tripId, packingItems, todoItems }: Readonly<{ t
         {subTab === 'todo' && (
           <LazyPanel id="todo">
             <TodoListPanel tripId={tripId} items={todoItems} addItemSignal={addTodoSignal} />
+          </LazyPanel>
+        )}
+        {subTab === 'outfits' && (
+          <LazyPanel id="outfits">
+            <OutfitsPlannerPanel tripId={tripId} canEdit={canEditPacking} />
           </LazyPanel>
         )}
       </div>

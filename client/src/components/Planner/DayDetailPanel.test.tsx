@@ -1484,7 +1484,8 @@ describe('DayDetailPanel', () => {
   it('FE-PLANNER-DAYDETAIL-078: the picker reports when the trip has no places to pick from', async () => {
     render(<DayDetailPanel {...defaultProps} places={[]} />);
     await userEvent.click(await screen.findByText(/Add accommodation/i));
-    expect(await screen.findByText('Add places to your trip first')).toBeInTheDocument();
+    // The inline search above the list is the way out of an empty trip now.
+    expect(await screen.findByText('No matching place yet — search above to add one')).toBeInTheDocument();
   });
 
   // ── Day-detail plugin slot ──────────────────────────────────────────────────

@@ -23,7 +23,7 @@ import {
 import { useCostsLedger } from './useCostsLedger'
 import { useExpenseLinks } from './useExpenseLinks'
 import { useSettlementForm } from './useSettlementForm'
-import { usePercentSplit, type CustomSplitUnit } from './usePercentSplit'
+import { usePercentSplit, payerRemainderAmount, payerRemainderPercent, percentString, type CustomSplitUnit } from './usePercentSplit'
 import { useExpenseForm } from './useExpenseForm'
 import { ReceiptPreviewModal } from './ReceiptPreviewModal'
 import { useExpenseDeleteConfirm } from './useExpenseDeleteConfirm'
@@ -1141,6 +1141,22 @@ export function ExpenseModal({ tripId, base, people, me, editing, prefill, onClo
   const pct = usePercentSplit({ total: totalNum, participants, customAmounts, setCustomAmounts, currency })
   const inPercent = splitMode === 'custom' && pct.unit === 'percent'
 
+  // The payer who takes what is left, so a 60/40 typed as percentages or a
+  // 1-penny rounding miss cannot keep the expense from saving.
+  const remainderPayer = payerId > 0 && participants.has(payerId)
+    ? people.find(p => p.id === payerId)
+    : undefined
+  const giveRemainder = () => {
+    if (!remainderPayer) return
+    const ids = [...participants]
+    if (inPercent) {
+      pct.onPercentChange(payerId, String(payerRemainderPercent(pct.percents, ids, payerId)))
+    } else {
+      const amount = payerRemainderAmount(totalNum, customAmounts, ids, payerId, currency)
+      setCustomAmounts(prev => ({ ...prev, [payerId]: amountToInputString(amount, currency) }))
+    }
+  }
+
   const catInfo = catMeta(cat)
   const money = (v: number) => formatMoney(v, currency, locale)
   // A person's row in the payer and split lists: avatar or initial, then the name.
@@ -1401,6 +1417,14 @@ export function ExpenseModal({ tripId, base, people, me, editing, prefill, onClo
                 total: money(totalNum),
                 diff: money(Math.abs(totalNum - splitSum)),
               })}</>, 'danger')
+            )}
+            {splitMode === 'custom' && remainderPayer && !(inPercent ? Math.abs(pct.percentSum - 100) < 1e-9 : customBalanced) && (
+              <button type="button" onClick={giveRemainder}
+                className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-[3px] font-semibold text-accent hover:bg-accent/20"
+                style={fs(12)}>
+                <Check size={12} strokeWidth={2.6} />
+                {t('costs.giveRemainderTo', { name: nameOf(remainderPayer) })}
+              </button>
             )}
           </div>
         </>

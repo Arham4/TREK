@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { useState } from 'react'
 import { act, renderHook } from '@testing-library/react'
-import { amountsToPercents, percentsToAmounts, percentString, usePercentSplit } from './usePercentSplit'
+import { amountsToPercents, payerRemainderAmount, payerRemainderPercent, percentsToAmounts, percentString, usePercentSplit } from './usePercentSplit'
 
 describe('percent split maths (#1709)', () => {
   it('FE-BUDGET-PCT-001: thirds add up to the total exactly', () => {
@@ -28,6 +28,21 @@ describe('percent split maths (#1709)', () => {
     expect(amountsToPercents(80, { 1: '20', 2: '60', 3: '' }, [1, 2, 3])).toEqual({ 1: '25', 2: '75' })
     expect(amountsToPercents(0, { 1: '20' }, [1])).toEqual({})
     expect(percentString(33.3333)).toBe('33.33')
+  })
+
+  it('FE-BUDGET-PCT-007: the payer takes whatever percentage the others leave', () => {
+    expect(payerRemainderPercent({ 1: '60', 2: '25' }, [1, 2, 3], 3)).toBe(15)
+    expect(payerRemainderPercent({ 1: '60', 2: '50' }, [1, 2], 2)).toBe(40)
+    expect(payerRemainderPercent({ 1: '60', 2: '50' }, [1, 2, 3], 3)).toBe(0)
+    expect(payerRemainderPercent({}, [1, 2], 1)).toBe(100)
+  })
+
+  it('FE-BUDGET-PCT-008: the payer takes the missing pennies, rounded to the currency', () => {
+    expect(payerRemainderAmount(100, { 1: '33.33', 2: '33.33' }, [1, 2, 3], 3, 'EUR')).toBe(33.34)
+    expect(payerRemainderAmount(10, { 1: '3.33' }, [1, 2], 2, 'EUR')).toBe(6.67)
+    expect(payerRemainderAmount(1000, { 1: '333' }, [1, 2], 2, 'JPY')).toBe(667)
+    // More assigned than the total: the payer gets the negative refund, not a hidden cent.
+    expect(payerRemainderAmount(10, { 1: '12' }, [1, 2], 2, 'EUR')).toBe(-2)
   })
 })
 

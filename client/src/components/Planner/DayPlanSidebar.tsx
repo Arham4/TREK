@@ -7,7 +7,7 @@ declare global { interface Window { __dragData: DragDataPayload | null } }
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react'
 import { avatarSrc } from '../../utils/avatarSrc'
 import { safeHttpUrl } from '../../utils/safeUrl'
-import { ChevronDown, ChevronRight, ChevronUp, Compass, RotateCcw, ExternalLink, Pencil, GripVertical, Ticket, Plus, FileText, Trash2, Car, Lock, Hotel, Eraser, Route as RouteIcon, RouteOff, Bookmark, StickyNote, TramFront, Zap, MapPin, Globe } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Compass, RotateCcw, ExternalLink, Pencil, GripVertical, Ticket, Plus, FileText, Trash2, Car, Lock, Hotel, Eraser, Route as RouteIcon, RouteOff, Bookmark, StickyNote, TramFront, Zap, MapPin, Globe, CalendarDays } from 'lucide-react'
 import type { PlannedTransitLeg } from './transitLeg'
 import { useTransitLegPlanner } from './useTransitLegPlanner'
 import { WalkLateLine } from '../Tours/walk/WalkTransitNote'
@@ -1853,8 +1853,24 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar(props: DayPlanSidebarP
                         const isLocked = lockedIds.has(assignment.id)
                         // The actions a right-click offers; the row's "…" offers the same, so a
                         // mouse that never right-clicks and the keyboard reach them too.
+                        // Direct day list (no nested picker: the menu is flat). Moving
+                        // keeps the stop's times; a timed stop lands where the
+                        // day draws it, the same rule a drag follows.
+                        const moveDayEntries = canEditDays && moveToDay
+                          ? days
+                            .filter(d => d.id !== day.id)
+                            .map(d => {
+                              const n = d.day_number ?? days.indexOf(d) + 1
+                              return {
+                                label: `Move to Day ${n}${d.title ? ` — ${d.title}` : ''}`,
+                                icon: CalendarDays,
+                                onClick: () => { void moveToDay(assignment.id, day.id, d.id).catch((err: unknown) => toast.error(err instanceof Error ? err.message : t('common.unknownError'))) },
+                              }
+                            })
+                          : []
                         const placeMenu = () => [
                           canEditPlaces && onEditPlace && { label: t('common.edit'), icon: Pencil, onClick: () => onEditPlace(place, assignment.id) },
+                          ...moveDayEntries,
                           canEditDays && onRemoveAssignment && { label: t('planner.removeFromDay'), icon: Trash2, onClick: () => onRemoveAssignment(day.id, assignment.id) },
                           canEditDays && place.lat != null && place.lng != null && {
                             label: assignment.route_excluded ? t('dayplan.includeInRoute') : t('dayplan.excludeFromRoute'),

@@ -8,11 +8,13 @@ import { cleanEndpointName } from './reservationName'
 import { useSettingsStore } from '../../store/settingsStore'
 import { hopIsVisible, labelFloorPx } from '../../utils/reservationRoutes'
 import { TRANSPORT_COLOR, TRANSPORT_META, transportHop, type TransportHop, type TransportType } from './transportHops'
+import { BOOKING_POINT_META, type BookingPoint } from './bookingPoints'
 import type { Reservation } from '../../types'
 import { frameLine } from '../../utils/lngFrame'
 import { useLngFrame } from './lngFrameContext'
 
 const ENDPOINT_PANE = 'reservation-endpoints'
+const BOOKING_PANE = 'booking-points'
 
 function useEndpointPane() {
   const map = useMap()
@@ -21,6 +23,11 @@ function useEndpointPane() {
     if (!map.getPane(ENDPOINT_PANE)) {
       const pane = map.createPane(ENDPOINT_PANE)
       pane.style.zIndex = '650'
+      pane.style.pointerEvents = 'auto'
+    }
+    if (!map.getPane(BOOKING_PANE)) {
+      const pane = map.createPane(BOOKING_PANE)
+      pane.style.zIndex = '645'
       pane.style.pointerEvents = 'auto'
     }
   }, [map])
@@ -47,6 +54,25 @@ function endpointIcon(type: TransportType, label: string | null): L.DivIcon {
   })
 }
 
+/** The round pin a hotel, tour, restaurant or activity stands on when it draws no route. */
+function bookingPinIcon(type: string): L.DivIcon {
+  const meta = BOOKING_POINT_META[type] ?? BOOKING_POINT_META.other
+  const { icon: IconCmp } = meta
+  const svg = renderIconMarkup(createElement(IconCmp, { size: 13, color: 'white', strokeWidth: 2 }))
+  return L.divIcon({
+    className: 'trek-booking-point',
+    html: `<div style="
+      display:flex;align-items:center;justify-content:center;
+      width:27px;height:27px;border-radius:999px;
+      background:${meta.color};box-shadow:0 2px 7px rgba(0,0,0,0.35);
+      border:2px solid #fff;color:#fff;box-sizing:border-box;
+    "><span style="display:flex;align-items:center;">${svg}</span></div>`,
+    iconSize: [27, 27],
+    iconAnchor: [13.5, 13.5],
+    popupAnchor: [0, -14],
+  })
+}
+
 /** What a hop will draw: the road it was routed along when there is one, else its arcs. */
 function linesFor(item: TransportItem, roadRoutes: Map<number, [number, number][]> | undefined): [number, number][][] {
   const road = roadRoutes?.get(item.res.id)
@@ -69,9 +95,13 @@ interface Props {
   // Real road-network geometry for car/bus/taxi/bicycle bookings, keyed by
   // reservation id. When present it is drawn instead of the straight arc.
   roadRoutes?: Map<number, [number, number][]>
+  /** Point bookings (hotel, tour, restaurant, activity), already matched to their place. */
+  bookingPoints?: BookingPoint[]
+  /** Opens a point booking's detail, the same card a transport's endpoint opens. */
+  onBookingClick?: (reservationId: number) => void
 }
 
-export default function ReservationOverlay({ reservations, showConnections, onEndpointClick, roadRoutes }: Props) {
+export default function ReservationOverlay({ reservations, showConnections, onEndpointClick, roadRoutes, bookingPoints = [], onBookingClick }: Props) {
   useEndpointPane()
   const map = useMap()
   const [zoom, setZoom] = useState(() => map.getZoom())
@@ -117,10 +147,29 @@ export default function ReservationOverlay({ reservations, showConnections, onEn
     return set
   }, [visibleItems, zoom, map])
 
-  if (!showConnections) return null
+  const pins = bookingPoints.map(point => (
+    <Marker
+      key={`booking-point-${point.res.id}`}
+      position={[point.lat, point.lng]}
+      icon={bookingPinIcon(point.type)}
+      pane={BOOKING_PANE}
+      zIndexOffset={500}
+      eventHandlers={{ click: () => onBookingClick?.(point.res.id) }}
+    >
+      <Tooltip direction="top" offset={[0, -12]} opacity={1} className="map-tooltip">
+        <div style={{ fontWeight: 600, fontSize: 12 }}>{point.name || point.res.title}</div>
+        {point.res.title && point.res.title !== point.name && (
+          <div className="text-content-muted" style={{ fontSize: 11 }}>{point.res.title}</div>
+        )}
+      </Tooltip>
+    </Marker>
+  ))
+
+  if (!showConnections) return <>{pins}</>
 
   return (
     <>
+      {pins}
       {visibleItems.map(item => {
         if (item.transitSegs.length > 0) {
           return item.transitSegs.map((seg, segIdx) => (

@@ -14,6 +14,7 @@ import { cleanEndpointName } from './reservationName'
 import { hopIsVisible, labelFloorPx } from '../../utils/reservationRoutes'
 import { escapeHtml } from '@trek/shared'
 import { TRANSPORT_COLOR, TRANSPORT_META, transportHop, type TransportHop, type TransportType } from './transportHops'
+import { BOOKING_POINT_META, type BookingPoint } from './bookingPoints'
 import type { Reservation } from '../../types'
 
 export const RESERVATION_SOURCE_ID = 'trek-reservations'
@@ -33,8 +34,7 @@ function buildItems(reservations: Reservation[]): TransportHop[] {
 }
 
 // ── DOM helpers for HTML markers ──────────────────────────────────────────
-function endpointMarkerHtml(type: TransportType, label: string | null): string {
-  const { icon: IconCmp } = TRANSPORT_META[type]
+function endpointMarkerHtml(type: TransportType, label: string | null): string {  const { icon: IconCmp } = TRANSPORT_META[type]
   const svg = renderIconMarkup(createElement(IconCmp, { size: 13, color: 'white', strokeWidth: 2.5 }))
   const labelHtml = label ? `<span style="display:inline-flex;align-items:center;line-height:1">${escapeHtml(label)}</span>` : ''
   return `<div style="
@@ -45,6 +45,19 @@ function endpointMarkerHtml(type: TransportType, label: string | null): string {
     font-family:var(--font-system);font-size:11px;font-weight:600;letter-spacing:0.3px;line-height:1;
     box-sizing:border-box;height:22px;white-space:nowrap;cursor:pointer;
   "><span style="display:inline-flex;align-items:center;">${svg}</span>${labelHtml}</div>`
+}
+
+/** The round pin a point booking (hotel, tour, restaurant) stands on. */
+function bookingPinHtml(type: string): string {
+  const meta = BOOKING_POINT_META[type] ?? BOOKING_POINT_META.other
+  const { icon: IconCmp } = meta
+  const svg = renderIconMarkup(createElement(IconCmp, { size: 13, color: 'white', strokeWidth: 2 }))
+  return `<div style="
+    display:flex;align-items:center;justify-content:center;
+    width:27px;height:27px;border-radius:999px;
+    background:${meta.color};box-shadow:0 2px 7px rgba(0,0,0,0.35);
+    border:2px solid #fff;color:#fff;box-sizing:border-box;cursor:pointer;
+  "><span style="display:flex;align-items:center;">${svg}</span></div>`
 }
 
 // ── overlay manager ──────────────────────────────────────────────────────
@@ -73,6 +86,8 @@ export class ReservationMapboxOverlay {
   private opts: ReservationOverlayOptions
   private MarkerCtor: MarkerConstructor
   private endpointMarkers: GlMarker[] = []
+  private pointMarkers: GlMarker[] = []
+  private points: BookingPoint[] = []
   private rerender: () => void
   private destroyed = false
 
@@ -86,9 +101,10 @@ export class ReservationMapboxOverlay {
     map.on('moveend', this.rerender)
   }
 
-  update(reservations: Reservation[], opts: ReservationOverlayOptions, roadRoutes?: Map<number, [number, number][]>) {
+  update(reservations: Reservation[], opts: ReservationOverlayOptions, roadRoutes?: Map<number, [number, number][]>, points?: BookingPoint[]) {
     this.opts = opts
     this.items = buildItems(reservations)
+    this.points = points ?? []
     this.roadRoutes = roadRoutes ?? new Map()
     this.render()
   }
@@ -99,6 +115,8 @@ export class ReservationMapboxOverlay {
     this.map.off('moveend', this.rerender)
     this.endpointMarkers.forEach(m => m.remove())
     this.endpointMarkers = []
+    this.pointMarkers.forEach(m => m.remove())
+    this.pointMarkers = []
     try {
       // Every layer before the source: the engine refuses to drop a source while
       // anything still references it, and it reports that by firing an error event
@@ -248,6 +266,30 @@ export class ReservationMapboxOverlay {
           this.endpointMarkers.push(marker)
         }
       }
+    }
+
+    // ── point booking pins (independent of the connection switch) ────
+    this.pointMarkers.forEach(m => m.remove())
+    this.pointMarkers = []
+    for (const point of this.points) {
+      const el = document.createElement('div')
+      el.innerHTML = bookingPinHtml(point.type)
+      const inner = el.firstElementChild as HTMLElement | null
+      const node = inner ?? el
+      // Same hook the Leaflet overlay's DivIcon carries (`trek-booking-point`),
+      // so the pins are queryable the same way on either renderer.
+      node.classList.add('trek-booking-point')
+      node.title = point.name || point.res.title || ''
+      if (this.opts.onEndpointClick) {
+        node.addEventListener('click', (ev) => {
+          ev.stopPropagation()
+          this.opts.onEndpointClick?.(point.res.id)
+        })
+      }
+      const marker = new this.MarkerCtor({ element: node, anchor: 'center' })
+        .setLngLat([point.lng, point.lat])
+        .addTo(map)
+      this.pointMarkers.push(marker)
     }
 
     // No stats badge: the floating route/duration label on the arc was removed,

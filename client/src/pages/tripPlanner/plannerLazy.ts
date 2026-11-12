@@ -9,6 +9,8 @@ import { lazyWithRetry } from '../../utils/lazyWithRetry'
 export const ReservationsPanel = lazyWithRetry(() => import('../../components/Planner/ReservationsPanel'))
 export const PackingListPanel = lazyWithRetry(() => import('../../components/Packing/PackingListPanel'))
 export const TodoListPanel = lazyWithRetry(() => import('../../components/Todo/TodoListPanel'))
+// The custom wardrobe planner, which the Lists tab shows as its Outfits sub-tab.
+export const OutfitsPlannerPanel = lazyWithRetry(() => import('../../components/Outfits/OutfitsPlannerPanel'))
 export const FileManager = lazyWithRetry(() => import('../../components/Files/FileManager'))
 export const CostsPanel = lazyWithRetry(() => import('../../components/Budget/CostsPanel'))
 // Named export, so it needs the extra hop. Importing it statically would keep the

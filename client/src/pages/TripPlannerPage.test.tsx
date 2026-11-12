@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '../../tests/helpers/render';
+import { render, screen, waitFor, act, fireEvent, within } from '../../tests/helpers/render';
 import { Routes, Route } from 'react-router';
 import { resetAllStores, seedStore } from '../../tests/helpers/store';
 import { buildUser, buildTrip, buildDay, buildPlace, buildAssignment, buildReservation } from '../../tests/helpers/factories';
@@ -359,7 +359,10 @@ describe('TripPlannerPage', () => {
       vi.useRealTimers();
 
       await waitFor(() => {
-        expect(screen.getByText('Tokyo Adventure')).toBeInTheDocument();
+        // The title also heads the Document View hero and its outline, so read
+        // the navbar this case is about.
+        const navbar = document.querySelector('[data-desktop-navbar]') as HTMLElement;
+        expect(within(navbar).getByText('Tokyo Adventure')).toBeInTheDocument();
       });
     });
   });

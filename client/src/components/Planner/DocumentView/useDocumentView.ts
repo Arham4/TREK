@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { Trip, Day, Place, Category, AssignmentsMap, Accommodation, Reservation, DayNote, Assignment } from '../../../types'
-import { getMergedItems as _getMergedItems, getDisplayTimeForDay, getTransportForDay as _getTransportForDay, parseTimeToMinutes, type MergedItem } from '../../../utils/dayMerge'
-import { chronoOrder } from '@trek/shared'
+import { getMergedItems as _getMergedItems, getDisplayTimeForDay, getTransportForDay as _getTransportForDay, type MergedItem } from '../../../utils/dayMerge'
 import { getDayBookendHotels } from '../../../utils/dayOrder'
 import { useSettingsStore } from '../../../store/settingsStore'
 
@@ -25,8 +24,16 @@ export interface UseDocumentViewOptions {
   onAddReservation?: (dayId: number) => void
   onAssignToDay?: (placeId: number, dayId: number, position?: number) => void
   onRemoveAssignment?: (dayId: number, assignmentId: number) => void
+  /** Moves a stop to another day at a position of that day's stop list. */
+  onMoveToDay?: (assignmentId: number, fromDayId: number, toDayId: number, position?: number) => void
+  /** Renames a day in place from the document. */
+  onUpdateDayTitle?: (dayId: number, title: string) => void
+  /** Saves the per-stop note the document edits inline; an empty note clears it. */
+  onUpdateAssignmentNotes?: (dayId: number, assignmentId: number, notes: string | null) => void
   onReorder?: (dayId: number, orderedIds: number[]) => void
   onDeletePlace?: (placeId: number) => void
+  /** Clears a stop's start/end times so a manual reorder that breaks time order sticks. */
+  onClearAssignmentTime?: (dayId: number, assignmentId: number) => void | Promise<void>
 }
 
 export type PlanViewMode = 'map' | 'document'
@@ -52,8 +59,12 @@ export function useDocumentView(options: UseDocumentViewOptions) {
     onAddReservation,
     onAssignToDay,
     onRemoveAssignment,
+    onMoveToDay,
+    onUpdateDayTitle,
+    onUpdateAssignmentNotes,
     onReorder,
     onDeletePlace,
+    onClearAssignmentTime,
   } = options
 
   // User Settings: Time format & locale
@@ -109,9 +120,28 @@ export function useDocumentView(options: UseDocumentViewOptions) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isFeatureEnabled, toggleViewMode])
 
-  // 3. Compact Mode (always true - default clean layout)
-  const compactMode = true
-  const setCompactMode = useCallback((_val: boolean | ((prev: boolean) => boolean)) => {}, [])
+  // 3. Compact Mode (persisted per trip; the rail and the toolbar share it).
+  // The document used to hardcode compact with a no-op setter while the rail
+  // still offered `onToggleCompact`, leaving the detailed cards unreachable.
+  const [compactMode, setCompactModeState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`trek_doc_compact_${tripId}`) ?? localStorage.getItem('trek_doc_compact')
+      return saved === null ? true : saved !== 'false'
+    } catch {
+      return true
+    }
+  })
+
+  const setCompactMode = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    setCompactModeState(prev => {
+      const next = typeof val === 'function' ? (val as (p: boolean) => boolean)(prev) : val
+      try {
+        localStorage.setItem('trek_doc_compact', String(next))
+        localStorage.setItem(`trek_doc_compact_${tripId}`, String(next))
+      } catch {}
+      return next
+    })
+  }, [tripId])
 
   // 4. Outline rail collapse state
   const [outlineOpen, setOutlineOpen] = useState(true)
@@ -179,26 +209,11 @@ export function useDocumentView(options: UseDocumentViewOptions) {
         },
       })
 
-      // Ensure stable, correct chronological sorting so early morning items (e.g. 6:30 AM)
-      // don't get trapped at the bottom after late afternoon stops
-      const items = chronoOrder(rawMergedItems, it => {
-        if (it.type === 'place') {
-          const rawTime = it.data?.assignment_time || it.data?.place?.place_time || it.data?.place_time
-          return parseTimeToMinutes(rawTime)
-        }
-        if (it.type === 'note') {
-          return parseTimeToMinutes(it.data?.time)
-        }
-        if (it.type === 'transport') {
-          const r = it.data
-          if (r.type === 'car' && r.end_day_id && r.end_day_id !== r.day_id && day.id === r.end_day_id) {
-            return parseTimeToMinutes(r.reservation_end_time || r.reservation_time)
-          }
-          const dt = getDisplayTimeForDay(r, day.id)
-          return parseTimeToMinutes(dt || r.reservation_time)
-        }
-        return null
-      })
+      // `getMergedItems` already returns the day in its drawn order (manual
+      // order first, clock within it). Re-sorting the merged list by clock here
+      // used to drag every manually reordered timed stop back to its
+      // chronological slot right after the reorder API succeeded.
+      const items = rawMergedItems
 
       map.set(day.id, items)
     })
@@ -332,6 +347,10 @@ export function useDocumentView(options: UseDocumentViewOptions) {
     onAddReservation,
     onAssignToDay,
     onRemoveAssignment,
+    onMoveToDay,
+    onUpdateDayTitle,
+    onUpdateAssignmentNotes,
     onDeletePlace,
+    onClearAssignmentTime,
   }
 }

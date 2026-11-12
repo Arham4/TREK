@@ -58,6 +58,8 @@ const packing: TranslationStrings = {
   'packing.noMembers': 'No trip members',
   'packing.addItem': 'Add item',
   'packing.addItemPlaceholder': 'Item name...',
+  'packing.quickAddAction': 'Add item to list',
+  'packing.quickAddPlaceholder': 'Add an item here and press Enter...',
   'packing.addCategory': 'Add list',
   'packing.newCategoryPlaceholder': 'List name (e.g. Clothing)',
   'packing.applyTemplate': 'Apply template',

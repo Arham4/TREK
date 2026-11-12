@@ -134,7 +134,8 @@ export function bookingFacts(r: Reservation, c: FactsContext): BookingFacts {
   }
 }
 
-function nightsBetween(a: string | null, b: string | null): number {
+/** Whole nights between two calendar dates, 0 when either is missing or the range runs backwards. */
+export function nightsBetween(a: string | null, b: string | null): number {
   if (!a || !b) return 0
   const n = Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 864e5)
   return n > 0 ? n : 0

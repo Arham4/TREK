@@ -35,6 +35,7 @@ import { useGeolocation } from '../../hooks/useGeolocation'
 import type { Day, Place, Reservation, RouteVia } from '../../types'
 import type { MapHoverInfo } from './mapHover'
 import type { MapViewProps, RouteSegment } from './mapViewContract'
+import type { BookingPoint } from './bookingPoints'
 import { nightPauseMarker, NIGHT_PAUSE_MIN_ZOOM } from './nightPauseMarker'
 import { clusterPois, poiClusterMarkup, poiClusterList, POI_CLUSTER_DETAIL_ZOOM } from './poiClusters'
 import { groupCoincidentPlaces } from './coincidentPlaces'
@@ -96,6 +97,7 @@ const NO_ACCESS_LINES: { line: [[number, number], [number, number]]; meters: num
 const NO_ROUTE_SEGMENTS: RouteSegment[] = []
 const NO_DAY_ORDER: Record<number, number[] | null> = {}
 const NO_RESERVATIONS: Reservation[] = []
+const NO_BOOKING_POINTS: BookingPoint[] = []
 const NO_CONNECTION_IDS: number[] = []
 const NO_POIS: Poi[] = []
 const NO_DAYS: Day[] = []
@@ -401,6 +403,7 @@ export function MapViewGL({
   inspectorHeight = 0,
   hasDayDetail = false,
   reservations = NO_RESERVATIONS,
+  bookingPoints = NO_BOOKING_POINTS,
   visibleConnectionIds = NO_CONNECTION_IDS,
   showTransitRoutes = true,
   days = NO_DAYS,
@@ -1858,8 +1861,8 @@ export function MapViewGL({
       showStats: showReservationStats,
       showEndpointLabels,
       onEndpointClick: (id) => onReservationClickRef.current?.(id),
-    }, transportRoutes)
-  }, [visibleReservations, transportRoutes, showReservationStats, showEndpointLabels, mapReady, glProvider])
+    }, transportRoutes, bookingPoints)
+  }, [visibleReservations, transportRoutes, showReservationStats, showEndpointLabels, mapReady, glProvider, bookingPoints])
 
   // Fit bounds on fitKey change — matches the Leaflet BoundsController
   const paddingOpts = useMemo(() => {

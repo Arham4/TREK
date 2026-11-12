@@ -17,7 +17,8 @@ export class Migration20200101046370_outfits extends Migration {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
-
+    `);
+    this.addSql(`
       CREATE TABLE IF NOT EXISTS outfit_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         outfit_id INTEGER NOT NULL REFERENCES outfits(id) ON DELETE CASCADE,
@@ -28,11 +29,12 @@ export class Migration20200101046370_outfits extends Migration {
         sort_order INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
-
-      CREATE INDEX IF NOT EXISTS idx_outfits_trip_day ON outfits(trip_id, day_id);
-      CREATE INDEX IF NOT EXISTS idx_outfits_user ON outfits(user_id);
-      CREATE INDEX IF NOT EXISTS idx_outfit_items_outfit ON outfit_items(outfit_id);
-      CREATE INDEX IF NOT EXISTS idx_outfit_items_packing ON outfit_items(packing_item_id);
     `);
+    // One statement per addSql: better-sqlite3 refuses a string that carries more
+    // than one, which kept a fresh install from ever finishing its migrations.
+    this.addSql(`CREATE INDEX IF NOT EXISTS idx_outfits_trip_day ON outfits(trip_id, day_id);`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS idx_outfits_user ON outfits(user_id);`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS idx_outfit_items_outfit ON outfit_items(outfit_id);`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS idx_outfit_items_packing ON outfit_items(packing_item_id);`);
   }
 }

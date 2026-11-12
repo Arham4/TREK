@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useId, type ReactNode } from 'react'
-import { X, CloudRain, Wind, Droplets, Sunrise, Sunset, Hotel, Calendar, MapPin, LogIn, LogOut, Pencil, ChevronsDown, ChevronsUp, ArrowRight, Check, Moon, Shirt, type LucideIcon } from 'lucide-react'
+import React, { useEffect, useRef, useId, useState, type ReactNode } from 'react'
+import { X, CloudRain, Wind, Droplets, Sunrise, Sunset, Hotel, Calendar, MapPin, LogIn, LogOut, Pencil, ChevronsDown, ChevronsUp, ArrowRight, Check, Moon, Shirt, Plus, type LucideIcon } from 'lucide-react'
 import type { WeatherResult } from '@trek/shared'
 import { usePluginViewContributions, PluginCardFooter } from '../Plugins/PluginContributions'
 import { usePluginStore } from '../../store/pluginStore'
 import PluginFrame from '../Plugins/PluginFrame'
 import { useCanDo } from '../../store/permissionsStore'
 import { useTripStore } from '../../store/tripStore'
+import { useAuthStore } from '../../store/authStore'
 import CustomSelect from '../shared/CustomSelect'
 import CustomTimePicker from '../shared/CustomTimePicker'
 import { BlurredCode, BookingCodeInput } from '../shared/BookingCode'
@@ -19,6 +20,7 @@ import type { Day, Place, Category, Reservation, AssignmentsMap, Accommodation }
 import { formatClockTime, splitReservationDateTime } from '../../utils/formatters'
 import { useDayDetail, useDayRename, type HotelDayRange, type HotelForm, type HotelPickerMode } from './useDayDetail'
 import { dayBookings, stayDayLabel, toDisplayTemp } from './dayDetailModel'
+import { HotelPlaceSearch } from './HotelPlaceSearch'
 import { pinnedAwayIn } from '../../utils/dayMerge'
 import { stayDayOptions, stayFormFrom, stayPlaceChoices, stayRangeFromEnd, stayRangeFromStart } from './stayFormModel'
 import { DialogShell, DialogHeader, DialogSection, DialogFooter, DialogButton, FooterSpacer, NEUTRAL_TINT, PILL, fs } from '../shared/DialogShell'
@@ -112,6 +114,18 @@ export default function DayDetailPanel({ day, days, places, categories = [], tri
   const dayContributions = usePluginViewContributions('day', tripId)(day?.id ?? -1)
   const outfits = useTripStore((s) => s.outfits)
   const dayOutfits = outfits.filter((o) => o.day_id === day?.id)
+  // Quick-add from the day panel: a bare "Daywear" shell for the current user,
+  // fleshed out later in the Lists tab's planner.
+  const addOutfit = useTripStore((s) => s.addOutfit)
+  const currentUserId = useAuthStore((s) => s.user?.id)
+  const addDayOutfit = async () => {
+    if (!canEditDays || currentUserId == null) return
+    try {
+      await addOutfit(tripId, { day_id: day.id, user_id: currentUserId, title: 'Daywear' })
+    } catch (err: unknown) {
+      showError(err)
+    }
+  }
   // Plugins that declared a day-detail slot mount at the bottom of this panel,
   // scoped to the open day. Inline-filter like the place-detail site.
   const dayDetailPlugins = usePluginStore((s) => s.plugins).filter((p) => p.type === 'widget' && p.slot === 'day-detail')
@@ -267,14 +281,30 @@ export default function DayDetailPanel({ day, days, places, categories = [], tri
             </div>
           </DialogSection>
 
-          {/* ── Day Outfits ── */}
-          {dayOutfits.length > 0 && (
-            <div>
-              <div style={{ height: 1, background: 'var(--border-faint)', margin: '12px 0' }} />
-              <div className="text-content-faint" style={{ fontSize: 'calc(11px * var(--fs-scale-caption, 1))', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* ── Day Outfits: always visible while editing, so a day without one can grow one here ── */}
+          {(dayOutfits.length > 0 || canEditDays) && (
+          <div>
+            <div style={{ height: 1, background: 'var(--border-faint)', margin: '12px 0' }} />
+            <div className="text-content-faint" style={{ fontSize: 'calc(11px * var(--fs-scale-caption, 1))', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Shirt size={12} className="text-accent" />
                 <span>{t('outfits.title', 'Outfits')}</span>
-              </div>
+              </span>
+              {canEditDays && (
+                <button
+                  type="button"
+                  onClick={() => { void addDayOutfit() }}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-accent hover:bg-surface-card transition-colors"
+                  style={{ fontSize: 'calc(11px * var(--fs-scale-caption, 1))', fontWeight: 700, textTransform: 'none', letterSpacing: 'normal' }}
+                >
+                  <Plus size={12} strokeWidth={2.5} />
+                  <span>{t('outfits.addOutfit', 'Add outfit')}</span>
+                </button>
+              )}
+            </div>
+              {dayOutfits.length === 0 ? (
+                <p className="m-0 text-content-faint" style={fs(11.5)}>{t('outfits.emptyDay', 'No outfits planned for this day yet.')}</p>
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {dayOutfits.map((o) => (
                   <div key={o.id} className="bg-surface-secondary" style={{ borderRadius: 10, padding: '8px 10px', fontSize: 'calc(12px * var(--fs-scale-body, 1))' }}>
@@ -292,6 +322,7 @@ export default function DayDetailPanel({ day, days, places, categories = [], tri
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
 
@@ -309,6 +340,7 @@ export default function DayDetailPanel({ day, days, places, categories = [], tri
       </div>
 
       <HotelPickerModal mode={showHotelPicker} onClose={() => setShowHotelPicker(false)} onSave={() => { void saveHotelPicker() }}
+        tripId={tripId}
         days={days} categories={categories} places={places}
         hotelDayRange={hotelDayRange} setHotelDayRange={setHotelDayRange}
         hotelForm={hotelForm} setHotelForm={setHotelForm}
@@ -562,6 +594,7 @@ interface HotelPickerModalProps {
   mode: HotelPickerMode
   onClose: () => void
   onSave: () => void
+  tripId: number
   days: Day[]
   categories: Category[]
   places: Place[]
@@ -575,13 +608,15 @@ interface HotelPickerModalProps {
 }
 
 /** The stay editor: which days, the times, the code, and the place to sleep at. */
-function HotelPickerModal({ mode, onClose, onSave, days, categories, places, hotelDayRange, setHotelDayRange,
+function HotelPickerModal({ mode, onClose, onSave, tripId, days, categories, places, hotelDayRange, setHotelDayRange,
   hotelForm, setHotelForm, hotelCategoryFilter, setHotelCategoryFilter, onSelectPlace }: HotelPickerModalProps) {
   const { t, locale } = useTranslation()
   const titleId = useId()
   const codeId = useId()
   const startId = useId()
   const endId = useId()
+  /** The place a search just created, before the trip's list has caught up. */
+  const [createdPlace, setCreatedPlace] = useState<Place | null>(null)
   if (!mode) return null
 
   const dayLabel = (d: Day, i: number) => d.title || t('planner.dayN', { n: i + 1 })
@@ -590,7 +625,8 @@ function HotelPickerModal({ mode, onClose, onSave, days, categories, places, hot
   const allDays = hotelDayRange.start === days[0]?.id && hotelDayRange.end === days[days.length - 1]?.id
   const filtered = stayPlaceChoices<Place>(places, hotelForm.place_id, hotelCategoryFilter || null)
   const setTime = (field: 'check_in' | 'check_in_end' | 'check_out') => (v: string) => setHotelForm(f => ({ ...f, [field]: v }))
-  const picked = places.find(p => p.id === hotelForm.place_id) ?? null
+  const picked = (createdPlace && createdPlace.id === hotelForm.place_id ? createdPlace : null)
+    ?? places.find(p => p.id === hotelForm.place_id) ?? null
   const startAt = position(hotelDayRange.start)
   const endAt = position(hotelDayRange.end)
   const nights = startAt >= 0 && endAt > startAt ? endAt - startAt : 0
@@ -698,6 +734,12 @@ function HotelPickerModal({ mode, onClose, onSave, days, categories, places, hot
             quiet
           />
         ) : undefined}>
+        <div className="mb-1.5">
+          <HotelPlaceSearch
+            tripId={tripId}
+            onCreated={place => { setCreatedPlace(place); onSelectPlace(place.id) }}
+          />
+        </div>
         {filtered.length === 0 ? (
           <p className="m-0 rounded-[14px] border border-dashed border-edge px-4 py-6 text-center text-content-faint" style={fs(12, 'body')}>{t('day.noPlacesForHotel')}</p>
         ) : (

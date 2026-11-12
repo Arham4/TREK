@@ -9,6 +9,7 @@ import type { DayBoundaryControls } from './dayBoundaryDrag';
 import type { CompassMap } from './MapCompassPill';
 import type { MapPlaceTool, TourBaseLayer, TourLayerOffer } from './MapLayerSwitcher';
 import type { Poi } from './poiCategories';
+import type { BookingPoint } from './bookingPoints';
 
 /*
  * The props both trip map renderers take: the Leaflet MapView and the GL
@@ -98,6 +99,12 @@ export interface MapViewProps {
   scopeConnectionsToDay?: boolean;
   showReservationStats?: boolean;
   onReservationClick?: (reservationId: number) => void;
+  /**
+   * Bookings that stand as one pin rather than a route (a hotel, a tour, a
+   * restaurant). Computed by the caller from the trip's places, so a booking
+   * points at the same spot as its place without a second entry.
+   */
+  bookingPoints?: BookingPoint[];
   pois?: Poi[];
   onPoiClick?: (poi: Poi) => void;
   /**

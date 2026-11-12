@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDay, buildReservation } from '../../../../tests/helpers/factories';
 import type { ReservationEndpoint } from '../../../types';
-import { bookingFacts, formatDay, type FactsContext } from './bookingFacts';
+import { bookingFacts, formatDay, nightsBetween, stayStats, type FactsContext } from './bookingFacts';
 
 function ep(over: Partial<ReservationEndpoint>): ReservationEndpoint {
   return { role: 'from', sequence: 0, name: 'Stop', code: null, lat: 1, lng: 1, timezone: null, local_time: null, local_date: null, ...over };
@@ -83,8 +83,7 @@ describe('bookingFacts: day', () => {
   });
 });
 
-describe('bookingFacts: time', () => {
-  it('FE-PLANNER-BKFACTS-008: start and end time with an arrow', () => {
+describe('bookingFacts: time', () => {  it('FE-PLANNER-BKFACTS-008: start and end time with an arrow', () => {
     const f = bookingFacts(buildReservation({ reservation_time: '2025-06-01T09:05', reservation_end_time: '2025-06-01T11:30' }), ctx());
     expect(f.time).toBe('09:05 → 11:30');
     expect(f.startTime).toBe('09:05');
@@ -167,6 +166,32 @@ describe('bookingFacts: cells', () => {
     expect(cell(f, 'reservations.meta.checkOut')).toBe('11:00 Uhr');
     const open = bookingFacts(buildReservation({ type: 'hotel', metadata: JSON.stringify({ check_in_time: '15:00' }) }), ctx());
     expect(cell(open, 'reservations.meta.checkIn')).toBe('15:00');
+  });
+});
+
+describe('stayStats', () => {
+  it('FE-PLANNER-BKFACTS-023: a stay prints its check-in and check-out dates and the nights between', () => {
+    const facts = bookingFacts(
+      buildReservation({ type: 'hotel', accommodation_start_day_id: 701, accommodation_end_day_id: 702 }),
+      ctx(),
+    );
+    const stats = stayStats(facts, { check_in_time: '15:00', check_out_time: '11:00' }, t, 'en-US');
+    expect(stats.map(s => s.value)).toEqual(['Jun 1', 'Jun 2', '1']);
+    expect(stats[0].label).toBe('reservations.meta.checkIn 15:00');
+    expect(stats[1].label).toBe('reservations.meta.checkOut 11:00');
+    expect(stats[2].label).toBe('reservations.nights');
+  });
+
+  it('FE-PLANNER-BKFACTS-024: nights count whole calendar days and never go negative', () => {
+    expect(nightsBetween('2025-06-01', '2025-06-03')).toBe(2);
+    expect(nightsBetween('2025-06-03', '2025-06-01')).toBe(0);
+    expect(nightsBetween(null, '2025-06-03')).toBe(0);
+  });
+
+  it('FE-PLANNER-BKFACTS-025: a single-date stay has no nights tile', () => {
+    const facts = bookingFacts(buildReservation({ type: 'hotel', day_id: 701 }), ctx());
+    const stats = stayStats(facts, {}, t, 'en-US');
+    expect(stats.map(s => s.value)).toEqual(['Jun 1']);
   });
 });
 

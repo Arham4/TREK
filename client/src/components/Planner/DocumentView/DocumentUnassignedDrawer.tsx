@@ -46,7 +46,9 @@ export const DocumentUnassignedDrawer: React.FC<DocumentUnassignedDrawerProps> =
 
   return (
     <div
-      className="fixed inset-y-0 right-0 w-full sm:w-96 bg-surface-card border-l border-edge shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+      className="fixed right-0 w-full sm:w-96 bg-surface-card border-l border-edge shadow-2xl z-[210] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+      style={{ top: 'var(--nav-h, 64px)', bottom: 0 }}
+      data-print-hide
       role="dialog"
       aria-label={strings.unassignedDrawerTitle}
     >

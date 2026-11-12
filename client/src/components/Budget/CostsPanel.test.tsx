@@ -1908,6 +1908,24 @@ describe('CostsPanel — split modes and guests', () => {
     expect(posted!.members).toEqual([{ user_id: 1, amount: 18 }, { user_id: 2, amount: 12 }])
   })
 
+  it('FE-W5COSTS-1710: the remainder button gives the payer whatever percentage is left', async () => {
+    const user = userEvent.setup()
+    mount([])
+
+    await user.click(await screen.findByRole('button', { name: 'Add expense' }))
+    await user.type(screen.getByPlaceholderText('e.g. Dinner, souvenirs, gas…'), 'Bag storage')
+    await user.type(screen.getAllByPlaceholderText('0,00')[0], '30')
+    await user.click(screen.getByRole('button', { name: 'Custom' }))
+    await user.click(screen.getByRole('button', { name: '%' }))
+
+    const [alice, bob] = screen.getAllByRole('textbox', { name: / %$/ })
+    await user.type(bob, '60')
+    await user.click(screen.getByRole('button', { name: /Give the rest/i }))
+
+    expect(screen.getByText('Split matches total')).toBeInTheDocument()
+    expect(alice).toHaveValue('40')
+  })
+
   it('FE-W5COSTS-057: multi-payer on a payer-less expense seeds and collapses back to me', async () => {
     const user = userEvent.setup()
     let put: Record<string, unknown> | null = null

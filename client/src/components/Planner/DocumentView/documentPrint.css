@@ -1,0 +1,122 @@
+/*
+ * Printing the Document View.
+ *
+ * The planner is a fixed-height, overflow-hidden application shell: the map
+ * corridor and its panels clip everything past the first screen. The document
+ * is the one surface that is meant to be read as a whole, so on paper its
+ * ancestors are unwound (`:has()` reaches every wrapper between the page and
+ * the stage) and the days flow on as many pages as they need.
+ *
+ * The body class is set by PlanDocumentHost only while the document is the
+ * visible stage, so Ctrl+P elsewhere in the planner keeps printing the planner
+ * as it looks.
+ */
+
+@media print {
+  @page {
+    margin: 12mm 10mm;
+  }
+
+  /* A printed page is white paper; the app's dark surface would flood it. */
+  body.trek-doc-print,
+  body.trek-doc-print #root {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  /* The shell pins html and body to the viewport; on paper they must grow with
+     the document instead, or everything past the first screen is clipped. */
+  html:has(> body.trek-doc-print),
+  body.trek-doc-print {
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  /* Unwind every wrapper that held the stage to the viewport. Written with
+     `:has()` because the chain differs between the desktop and phone shells. */
+  body.trek-doc-print *:has([data-testid='plan-document-stage']) {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    transform: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Everything except the document itself leaves the paper: nav bars, the
+     map, the side rails, floating pills and their portals. */
+  body.trek-doc-print #root * {
+    visibility: hidden !important;
+  }
+
+  body.trek-doc-print #root [data-testid='plan-document-stage'],
+  body.trek-doc-print #root [data-testid='plan-document-stage'] * {
+    visibility: visible !important;
+  }
+
+  body.trek-doc-print [data-testid='plan-document-stage'] {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body.trek-doc-print [data-testid='plan-document-stage'] main {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  body.trek-doc-print [data-testid='plan-document-stage'] main > div {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  /* The outline rail, the sticky search/filter bar, the unassigned drawer and
+     anything else marked by the view are screen furniture. A button that only
+     carries text (a stop's note, edited in place) is content, so it opts back
+     in with data-print-show. */
+  body.trek-doc-print [data-testid='plan-document-stage'] aside,
+  body.trek-doc-print [data-testid='plan-document-stage'] [data-print-hide],
+  body.trek-doc-print [data-testid='plan-document-stage'] button:not([data-print-show]) {
+    display: none !important;
+  }
+
+  /* Keep the document's own tinted callouts, category pills and hero photo. */
+  body.trek-doc-print [data-testid='plan-document-stage'] * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body.trek-doc-print [data-testid='plan-document-stage'] .w-full.h-44,
+  body.trek-doc-print [data-testid='plan-document-stage'] .sm\:h-56 {
+    height: 42mm !important;
+  }
+
+  /* A day may flow across pages, but a stop's card stays in one piece. */
+  body.trek-doc-print [data-testid='plan-document-stage'] section {
+    break-inside: auto;
+    page-break-inside: auto;
+    margin-bottom: 8mm !important;
+  }
+
+  body.trek-doc-print [data-testid='plan-document-stage'] section > div > div.group\/item,
+  body.trek-doc-print [data-testid='plan-document-stage'] [data-doc-card] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Day headings travel with at least the first stops of their day. */
+  body.trek-doc-print [data-testid='plan-document-stage'] section > div:first-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}

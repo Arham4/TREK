@@ -607,6 +607,7 @@ export const MapView = memo(function MapView({
   inspectorHeight = 0,
   hasDayDetail = false,
   reservations = [] as Reservation[],
+  bookingPoints = [],
   showReservationStats = false,
   visibleConnectionIds = [] as number[],
   showTransitRoutes = true,
@@ -1078,6 +1079,8 @@ export const MapView = memo(function MapView({
         showStats={showReservationStats}
         onEndpointClick={onReservationClick}
         roadRoutes={transportRoutes}
+        bookingPoints={bookingPoints}
+        onBookingClick={onReservationClick}
       />
 
       {hazards?.length > 0 && <HazardLayers hazards={hazards} />}

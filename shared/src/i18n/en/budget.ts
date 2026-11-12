@@ -180,6 +180,7 @@ const budget: TranslationStrings = {
   'costs.ticketShares': 'Individual shares',
   'costs.excluded': 'Excluded',
   'costs.splitBalanced': 'Split matches total',
+  'costs.giveRemainderTo': 'Give the rest to {name}',
   'costs.splitSumUnder': 'Sum of splits: {sum} of {total} (under by {diff})',
   'costs.splitSumOver': 'Sum of splits: {sum} of {total} (over by {diff})',
   'costs.toggleSign': 'Switch between expense and refund',

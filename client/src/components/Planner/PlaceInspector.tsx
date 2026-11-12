@@ -6,7 +6,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { markdownLinkComponents } from '../shared/markdownLink'
-import { X, Clock, MapPin, ExternalLink, Phone, Mail, Banknote, Pencil, Plus, Minus, ChevronDown, ChevronUp, ChevronRight, FileText, Upload, File, FileImage, Star, Navigation, Mountain, Bookmark, BookmarkCheck, Copy } from 'lucide-react'
+import { X, Clock, MapPin, ExternalLink, Phone, Mail, Banknote, Pencil, Plus, Minus, ChevronDown, ChevronUp, ChevronRight, FileText, Upload, File, FileImage, Star, Navigation, Mountain, Bookmark, BookmarkCheck, Copy, CalendarDays } from 'lucide-react'
 import { hoursLines, periodsFromWeek } from './placeHours'
 import PlaceAvatar from '../shared/PlaceAvatar'
 import PlacePhotoGallery from './PlacePhotoGallery'
@@ -39,6 +39,7 @@ import { formatDistance, formatElevation } from '../../utils/units'
 import { navigationTargetLabel, getNavigationTargets, openNavigationTarget } from './placeNavigation'
 import { TRANSPORT_TYPES, getPlaceBookings } from '../../utils/dayMerge'
 import { NavigationMenu } from '../shared/NavigationMenu'
+import { AnchoredMenu } from '../shared/AnchoredMenu'
 import { centredMapCard, type MapCardPlacement } from '../Map/centredMapCard'
 import { resolveOpenNow, resolvePlaceTimeZone, getWeekdayIndex, type OpeningPeriod } from './placeOpenState'
 import { convertHoursLine } from './placeHoursFormat'
@@ -229,6 +230,8 @@ export default function PlaceInspector({
   const [providerDetails, setProviderDetails] = useState<Array<{ pluginId: string; items: Array<{ label: string; value?: string; url?: string }> }>>([])
   const [navOpen, setNavOpen] = useState(false)
   const navAnchorRef = useRef<HTMLSpanElement>(null)
+  const [dayMenuOpen, setDayMenuOpen] = useState(false)
+  const dayMenuAnchorRef = useRef<HTMLSpanElement>(null)
   const placeIdForDetails = mode === 'trip' ? place?.id : undefined
   useEffect(() => {
     if (placeIdForDetails == null) { setProviderDetails([]); return }
@@ -493,16 +496,43 @@ export default function PlaceInspector({
               duplicate the stop exists to prevent. The booking is removed where it is
               made: in the day's overnight block, or by turning the night back into a
               pause in road trip mode. */}
-          {mode === 'trip' && !!selectedDayId && !bookedNight && (
-            assignmentInDay ? (
+          {mode === 'trip' && !!onAssignToDay && !bookedNight && (!!selectedDayId || days.length > 0) && (
+            selectedDayId && assignmentInDay ? (
               <DialogButton onClick={() => onRemoveAssignment?.(selectedDayId, assignmentInDay.id)} icon={<Minus size={14} strokeWidth={2} />} aria-label={t('inspector.removeFromDay')}>
                 <span className="max-sm:hidden">{t('inspector.removeFromDay')}</span>
               </DialogButton>
-            ) : (
-              <DialogButton variant="primary" onClick={() => onAssignToDay?.(place.id)} icon={<Plus size={14} strokeWidth={2} />}>
+            ) : selectedDayId ? (
+              <DialogButton variant="primary" onClick={() => onAssignToDay(place.id)} icon={<Plus size={14} strokeWidth={2} />}>
                 {t('inspector.addToDay')}
               </DialogButton>
+            ) : (
+              /* No day in focus (All Days): the day is chosen here rather than by
+                 first clicking one on the map and scrolling back to this card. */
+              <span ref={dayMenuAnchorRef} className="inline-flex">
+                <DialogButton variant="primary" onClick={() => setDayMenuOpen(o => !o)}
+                  icon={<Plus size={14} strokeWidth={2} />} aria-haspopup="menu" aria-expanded={dayMenuOpen}>
+                  {t('inspector.addToDay')}
+                </DialogButton>
+              </span>
             )
+          )}
+          {dayMenuOpen && (
+            <AnchoredMenu
+              anchor={dayMenuAnchorRef.current}
+              onClose={() => setDayMenuOpen(false)}
+              title={t('inspector.chooseDay')}
+              label={t('inspector.chooseDay')}
+              minWidth={220}
+              items={days.map((d, i) => {
+                const n = d.day_number ?? (i + 1)
+                return {
+                  key: d.id,
+                  label: d.title ? `${t('planner.dayN', { n })} · ${d.title}` : t('planner.dayN', { n }),
+                  icon: <CalendarDays size={13} />,
+                  onSelect: () => onAssignToDay(place.id, d.id),
+                }
+              })}
+            />
           )}
           {navigationTargets.length > 0 && (
             <>

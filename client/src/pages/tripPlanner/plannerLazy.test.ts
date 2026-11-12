@@ -8,6 +8,7 @@ const label = vi.hoisted(() => (text: string) => () => text)
 vi.mock('../../components/Planner/ReservationsPanel', () => ({ default: label('reservations panel') }))
 vi.mock('../../components/Packing/PackingListPanel', () => ({ default: label('packing list panel') }))
 vi.mock('../../components/Todo/TodoListPanel', () => ({ default: label('todo list panel') }))
+vi.mock('../../components/Outfits/OutfitsPlannerPanel', () => ({ default: label('outfits planner panel') }))
 vi.mock('../../components/Files/FileManager', () => ({ default: label('file manager') }))
 vi.mock('../../components/Budget/CostsPanel', () => ({ default: label('costs panel'), ExpenseModal: label('expense modal') }))
 vi.mock('../../components/Collab/CollabPanel', () => ({ default: label('collab panel') }))
@@ -30,6 +31,7 @@ const cases: Array<[keyof typeof lazy, string]> = [
   ['ReservationsPanel', 'reservations panel'],
   ['PackingListPanel', 'packing list panel'],
   ['TodoListPanel', 'todo list panel'],
+  ['OutfitsPlannerPanel', 'outfits planner panel'],
   ['FileManager', 'file manager'],
   ['CostsPanel', 'costs panel'],
   ['ExpenseModal', 'expense modal'],

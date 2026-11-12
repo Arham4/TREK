@@ -601,7 +601,7 @@ export function useTripPlanner() {
   useAssistantPlaceDraft(tripId, openAddPlaceFromPoi)
 
   const {
-    handleReorder, handleReorderDays, handleUpdateDayTitle, handleMoveToDay, handleRemoveAssignment,
+    handleReorder, handleReorderDays, handleUpdateDayTitle, handleMoveToDay, handleRemoveAssignment, handleUpdateAssignmentNotes,
     handleAssignToDay: assignWholeToDay,
   } = useDayPlanEdits({
     tripId, tripActions, toast, t, places, storedAssignments, tripAccommodations, selectedDayId,
@@ -773,7 +773,7 @@ export function useTripPlanner() {
     handleSelectDay, handlePlaceClick, handleMarkerClick, handleMapClick, handleMapContextMenu, openAddPlaceFromPoi, handlePoiClick,
     handleSavePlace, openPlaceEditor, handleDeletePlace, confirmDeletePlace, confirmDeletePlaces, confirmChangeCategory,
     handleDeleteTour,
-    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleReorderDays, handleAddDay, dayAdd, handleUpdateDayTitle,
+    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleReorderDays, handleAddDay, dayAdd, handleUpdateDayTitle, handleUpdateAssignmentNotes,
     tourDayQuestion, answerTourDay,
     ...dayDelete,
     ...dayClear,

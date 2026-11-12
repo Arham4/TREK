@@ -1,4 +1,4 @@
-import { Fragment, useId, useState, useEffect, useEffectEvent, type CSSProperties } from 'react'
+import { Fragment, useId, useRef, useState, useEffect, useEffectEvent, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useTripStore } from '../../store/tripStore'
 import { useCanDo } from '../../store/permissionsStore'
@@ -95,6 +95,28 @@ export default function TodoListPanel({ tripId, items, addItemSignal = 0 }: { tr
 
   // Plugin-contributed columns/actions for the todo view, keyed by task id (#plugins).
   const contribFor = usePluginViewContributions('todos', tripId)
+  const addTodoItem = useTripStore(s => s.addTodoItem)
+  // A single line at the end of the list, the way a checklist is actually kept:
+  // type, Enter, next line. The full dialog stays for a task with details.
+  const [quickName, setQuickName] = useState('')
+  const [quickSaving, setQuickSaving] = useState(false)
+  const quickRef = useRef<HTMLInputElement>(null)
+  const quickCategory = typeof filter === 'string' && categories.includes(filter) ? filter : null
+  const quickAdd = async () => {
+    const name = quickName.trim()
+    if (!name || quickSaving) return
+    setQuickSaving(true)
+    try {
+      await addTodoItem(tripId, {
+        name, description: null, priority: 0, due_date: null,
+        category: quickCategory, assigned_user_id: null,
+      })
+      setQuickName('')
+      quickRef.current?.focus()
+    } finally {
+      setQuickSaving(false)
+    }
+  }
 
   // Drag-to-reorder (#969). Manual ordering only makes sense when the list isn't
   // sorted by priority; a drag within the filtered view is mapped back onto the
@@ -253,6 +275,33 @@ export default function TodoListPanel({ tripId, items, addItemSignal = 0 }: { tr
             })
           )}
         </div>
+
+        {/* Quick add: a line at the bottom of the card, not a dialog. */}
+        {canEdit && (
+          <form
+            onSubmit={e => { e.preventDefault(); void quickAdd() }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, borderTop: '1px solid var(--border-faint)', padding: '8px 12px' }}
+          >
+            <Plus size={15} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+            <input
+              ref={quickRef}
+              value={quickName}
+              onChange={e => setQuickName(e.target.value)}
+              placeholder={t('todo.quickAddPlaceholder')}
+              aria-label={t('todo.quickAddPlaceholder')}
+              data-testid="todo-quick-add"
+              style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 'calc(13px * var(--fs-scale-body, 1))' }}
+            />
+            <button
+              type="submit"
+              disabled={!quickName.trim() || quickSaving}
+              aria-label={t('todo.quickAddAction')}
+              style={{ border: 'none', background: quickName.trim() ? 'var(--accent)' : 'var(--bg-tertiary)', color: quickName.trim() ? 'var(--accent-text)' : 'var(--text-faint)', borderRadius: 8, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: quickName.trim() ? 'pointer' : 'default', flexShrink: 0 }}
+            >
+              <Plus size={15} strokeWidth={2.5} />
+            </button>
+          </form>
+        )}
       </div>
 
       {/* ── Right: Detail Pane ── */}

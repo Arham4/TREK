@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** The two lists the Lists tab switches between. */
+/** The lists the Lists tab switches between. */
 export type ListsSubTab = 'packing' | 'todo' | 'outfits';
 
 const storageKey = (tripId: number) => `trip-lists-subtab-${tripId}`;

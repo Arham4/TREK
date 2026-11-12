@@ -19,6 +19,8 @@ interface DocumentOutlineRailProps {
   onSwitchToMap: () => void
   onClose?: () => void
   locale?: string
+  /** 'rail' sits beside the document on desktop; 'drawer' fills the phone sheet. */
+  variant?: 'rail' | 'drawer'
 }
 
 export const DocumentOutlineRail: React.FC<DocumentOutlineRailProps> = ({
@@ -35,12 +37,14 @@ export const DocumentOutlineRail: React.FC<DocumentOutlineRailProps> = ({
   onSwitchToMap,
   onClose,
   locale = 'en',
+  variant = 'rail',
 }) => {
   const strings = useDocI18n()
 
   return (
     <aside
-      className="hidden lg:flex flex-col flex-shrink-0 w-60 xl:w-64 border-r border-edge-faint bg-surface-secondary/30 select-none overflow-y-auto"
+      data-print-hide
+      className={`${variant === 'drawer' ? 'flex h-full w-full' : 'hidden lg:flex w-60 xl:w-64'} flex-col flex-shrink-0 border-r border-edge-faint bg-surface-secondary/30 select-none overflow-y-auto`}
       style={{
         position: 'sticky',
         top: 0,
@@ -108,6 +112,31 @@ export const DocumentOutlineRail: React.FC<DocumentOutlineRailProps> = ({
             }`}
           >
             {unassignedCount}
+          </span>
+        </button>
+      </div>
+
+      {/* Density Toggle: compact rows vs detailed cards (persisted per trip). */}
+      <div className="mb-4 px-0.5">
+        <button
+          type="button"
+          onClick={onToggleCompact}
+          aria-pressed={compactMode}
+          title={compactMode ? 'Switch to detailed cards' : 'Switch to compact rows'}
+          className={`flex items-center justify-between w-full px-3 py-1.5 rounded-xl text-caption font-semibold transition-all ${
+            compactMode
+              ? 'bg-surface-card hover:bg-surface-elevated text-content border border-edge-faint shadow-xs'
+              : 'bg-accent text-accent-text shadow-xs'
+          }`}
+        >
+          <span className="flex items-center gap-2 truncate">
+            <SlidersHorizontal size={13} className={compactMode ? 'text-accent' : 'text-accent-text'} />
+            <span className="truncate">Density</span>
+          </span>
+          <span className={`px-1.5 py-0.2 rounded-full text-caption font-mono font-bold ${
+            compactMode ? 'bg-surface-secondary text-content-muted' : 'bg-white/20 text-accent-text'
+          }`}>
+            {compactMode ? 'Compact' : 'Detailed'}
           </span>
         </button>
       </div>

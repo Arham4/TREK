@@ -479,6 +479,37 @@ describe('ReservationOverlay declutter floors and road routes', () => {
   })
 })
 
+describe('ReservationOverlay point bookings', () => {
+  const point = {
+    res: booking({ id: 77, type: 'hotel', title: 'Hotel Lutetia' }),
+    lat: 48.85,
+    lng: 2.32,
+    name: 'Hotel Lutetia',
+    type: 'hotel',
+  }
+
+  it('FE-COMP-RESOVERLAY-046: a hotel without a route still stands as a pin', () => {
+    renderOverlay({ reservations: [], bookingPoints: [point] })
+    const pins = markers()
+    expect(pins).toHaveLength(1)
+    expect(pins[0].getAttribute('data-pane')).toBe('booking-points')
+    expect(pins[0].getAttribute('data-lat')).toBe('48.85')
+  })
+
+  it('FE-COMP-RESOVERLAY-047: clicking the pin opens the booking itself', () => {
+    const onBookingClick = vi.fn()
+    renderOverlay({ reservations: [], bookingPoints: [point], onBookingClick })
+    fireEvent.click(markers()[0])
+    expect(onBookingClick).toHaveBeenCalledWith(77)
+  })
+
+  it('FE-COMP-RESOVERLAY-048: the pin stays while the connection switch is off', () => {
+    renderOverlay({ reservations: [], bookingPoints: [point], showConnections: false })
+    expect(markers()).toHaveLength(1)
+    expect(lines()).toHaveLength(0)
+  })
+})
+
 describe('ReservationOverlay transit journeys (#1570)', () => {
   it('FE-COMP-RESOVERLAY-020: draws the stored rail alignment with a white casing under it', () => {
     renderOverlay({ reservations: [transitBooking([{ geometry: GEOMETRY, mode: 'BUS', line_color: '#7c3aed' }])] })

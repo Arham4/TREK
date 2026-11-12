@@ -732,6 +732,60 @@ describe('ReservationMapboxOverlay transit styling', () => {
   })
 })
 
+describe('ReservationMapboxOverlay point bookings', () => {
+  const hotelPoint = {
+    res: booking({ id: 301, type: 'hotel', title: 'Hotel Lutetia' }),
+    lat: 48.85,
+    lng: 2.32,
+    name: 'Hotel Lutetia',
+    type: 'hotel',
+  }
+
+  it('FE-COMP-RESGL-045: a point booking stands as a pin even though it draws no route', () => {
+    const map = freshMap()
+    attach(map).update([], opts, undefined, [hotelPoint])
+    expect(glMarkers).toHaveLength(1)
+    expect(glMarkers[0].lngLat).toEqual([2.32, 48.85])
+    expect(glMarkers[0].el.title).toBe('Hotel Lutetia')
+    expect(features(map)).toHaveLength(0)
+  })
+
+  it('FE-COMP-RESGL-046: clicking the pin opens the booking and does not reach the map', () => {
+    const onEndpointClick = vi.fn()
+    const clickable = { ...opts, onEndpointClick }
+    const map = freshMap()
+    attach(map, clickable).update([], clickable, undefined, [hotelPoint])
+
+    const wrapper = document.createElement('div')
+    const onMapClick = vi.fn()
+    wrapper.addEventListener('click', onMapClick)
+    wrapper.appendChild(glMarkers[0].el)
+    glMarkers[0].el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(onEndpointClick).toHaveBeenCalledWith(301)
+    expect(onMapClick).not.toHaveBeenCalled()
+  })
+
+  it('FE-COMP-RESGL-047: the pin survives the connection switch and a redraw does not stack it', () => {
+    const map = freshMap()
+    const overlay = attach(map)
+    overlay.update([], { ...opts, showConnections: false }, undefined, [hotelPoint])
+    expect(glMarkers).toHaveLength(1)
+    expect(features(map)).toHaveLength(0)
+
+    overlay.update([], { ...opts, showConnections: false }, undefined, [hotelPoint])
+    expect(glMarkers).toHaveLength(2)
+    expect(glMarkers[0].remove).toHaveBeenCalled()
+  })
+
+  it('FE-COMP-RESGL-048: the pin carries the trek-booking-point class like the Leaflet renderer', () => {
+    const map = freshMap()
+    attach(map).update([], opts, undefined, [hotelPoint])
+    expect(glMarkers).toHaveLength(1)
+    expect(glMarkers[0].el.classList.contains('trek-booking-point')).toBe(true)
+  })
+})
+
 describe('ReservationMapboxOverlay frame handler', () => {
   it('FE-COMP-RESGL-042: the overlay does not subscribe to paint frames — only camera events redraw it', () => {
     const map = freshMap()

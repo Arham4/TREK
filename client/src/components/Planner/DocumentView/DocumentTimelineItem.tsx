@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Clock, MapPin, ChevronUp, ChevronDown, Edit2, Trash2,
   ExternalLink, Plane, Train, Car, Bus, Ticket, Footprints, MessageSquare,
-  Star, Sparkles, Navigation, DollarSign
+  Star, Sparkles, Navigation, DollarSign, GripVertical
 } from 'lucide-react'
 import type { MergedItem } from '../../../utils/dayMerge'
 import type { Place, Category, Assignment, Reservation, DayNote } from '../../../types'
@@ -31,6 +31,10 @@ interface DocumentTimelineItemProps {
   onRemoveAssignment?: (dayId: number, assignmentId: number) => void
   onMoveItem?: (dayId: number, assignmentId: number, direction: 'up' | 'down') => void
   onReservationClick?: (reservationId: number) => void
+  /** Saves the stop's own note; null or an empty string clears it. */
+  onUpdateNotes?: (dayId: number, assignmentId: number, notes: string | null) => void
+  /** Makes the grip at the row's start carry this stop for a drag. */
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>
 }
 
 export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
@@ -48,8 +52,41 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
   onRemoveAssignment,
   onMoveItem,
   onReservationClick,
+  onUpdateNotes,
+  dragHandleProps,
 }) => {
   const strings = useDocI18n()
+  const [editingNotes, setEditingNotes] = useState(false)
+  const [notesDraft, setNotesDraft] = useState('')
+  const notesRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    if (editingNotes) notesRef.current?.focus()
+  }, [editingNotes])
+
+  const startNotesEdit = (current: string | null | undefined) => {
+    if (!onUpdateNotes) return
+    setNotesDraft(current || '')
+    setEditingNotes(true)
+  }
+
+  const commitNotes = (current: string | null | undefined) => {
+    if (!editingNotes) return
+    setEditingNotes(false)
+    const next = notesDraft.trim() ? notesDraft : null
+    if ((current || null) !== next) onUpdateNotes?.(dayId, (item.type === 'place' ? item.data.id : 0), next)
+  }
+
+  const notesKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, current: string | null | undefined) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      commitNotes(current)
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setEditingNotes(false)
+    }
+  }
 
   // ── Place Item ──
   if (item.type === 'place') {
@@ -76,6 +113,19 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
         <div className="group/item flex flex-col gap-0.5 py-1.5 px-3 rounded-xl hover:bg-surface-secondary/80 border border-transparent hover:border-edge-faint transition-all">
           <div className="flex items-center justify-between gap-3 min-w-0">
             <div className="flex items-center gap-2.5 min-w-0">
+              {/* Drag handle: the compact row is how the document is reordered. */}
+              {dragHandleProps && (
+                <span
+                  {...dragHandleProps}
+                  role="button"
+                  aria-label={strings.dragStop}
+                  title={strings.dragStop}
+                  className="flex-shrink-0 cursor-grab active:cursor-grabbing text-content-faint opacity-0 group-hover/item:opacity-100 transition-opacity"
+                >
+                  <GripVertical size={13} />
+                </span>
+              )}
+
               {/* Time or Step Number */}
               <span className="w-16 sm:w-20 text-caption font-bold text-content-muted text-right flex-shrink-0 font-mono tracking-tight">
                 {formattedStartTime || `#${index + 1}`}
@@ -136,6 +186,16 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
 
             {/* Hover Action Buttons */}
             <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+              {onUpdateNotes && !assignment.notes && (
+                <button
+                  type="button"
+                  onClick={() => startNotesEdit(assignment.notes)}
+                  className="p-1 rounded text-content-faint hover:text-content hover:bg-surface-secondary transition-colors cursor-pointer"
+                  title={strings.addNoteInline}
+                >
+                  <MessageSquare size={12} />
+                </button>
+              )}
               {onEditPlace && (
                 <button
                   type="button"
@@ -159,10 +219,41 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
             </div>
           </div>
 
-          {/* Assignment Note Snippet if present */}
-          {assignment.notes && (
-            <div className="pl-[74px] sm:pl-[90px] pr-4 text-caption text-content-muted italic line-clamp-1 flex items-center gap-1.5">
-              <span className="truncate">{assignment.notes}</span>
+          {/* Assignment note: click to edit it in place, Enter/blur saves. */}
+          {(editingNotes || assignment.notes) && (
+            <div className="pl-[94px] sm:pl-[110px] pr-4 text-caption text-content-muted">
+              {editingNotes ? (
+                <textarea
+                  ref={notesRef}
+                  value={notesDraft}
+                  onChange={e => setNotesDraft(e.target.value)}
+                  onBlur={() => commitNotes(assignment.notes)}
+                  onKeyDown={e => notesKeyDown(e, assignment.notes)}
+                  rows={2}
+                  aria-label={strings.noteEditorLabel}
+                  placeholder={strings.notePlaceholder}
+                  className="w-full resize-y rounded-lg border border-accent/50 bg-surface-card px-2 py-1.5 text-body text-content outline-none focus:border-accent"
+                />
+              ) : onUpdateNotes ? (
+                <button
+                  type="button"
+                  onClick={() => startNotesEdit(assignment.notes)}
+                  title={strings.editNoteHint}
+                  // Notes are content: the print rules hide chrome buttons, not this one.
+                  data-print-show
+                  className="w-full block text-left italic hover:text-content cursor-text whitespace-pre-wrap break-words"
+                >
+                  <Markdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownLinkComponents}>
+                    {assignment.notes}
+                  </Markdown>
+                </button>
+              ) : (
+                <span className="block italic whitespace-pre-wrap break-words" data-print-show>
+                  <Markdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownLinkComponents}>
+                    {assignment.notes}
+                  </Markdown>
+                </span>
+              )}
             </div>
           )}
         </div>

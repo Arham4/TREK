@@ -245,6 +245,35 @@ describe('PlaceInspector', () => {
     expect(onAssignToDay).toHaveBeenCalledWith(place.id);
   });
 
+  it('FE-PLANNER-INSPECTOR-016b: with no day in focus the button offers the days and assigns straight from the menu', async () => {
+    const user = userEvent.setup();
+    const onAssignToDay = vi.fn();
+    const days = [
+      { id: 5, day_number: 1, title: 'Arrival' },
+      { id: 6, day_number: 2, title: 'Museum' },
+    ];
+    render(
+      <PlaceInspector
+        {...defaultProps}
+        days={days as never}
+        selectedDayId={null}
+        assignments={{}}
+        onAssignToDay={onAssignToDay}
+      />
+    );
+
+    await user.click(screen.getByText('Add to Day').closest('button')!);
+    await user.click(screen.getByRole('menuitem', { name: 'Day 2 · Museum' }));
+
+    expect(onAssignToDay).toHaveBeenCalledWith(place.id, 6);
+  });
+
+  it('FE-PLANNER-INSPECTOR-016c: without a day list there is nothing to offer, so no button', () => {
+    render(<PlaceInspector {...defaultProps} selectedDayId={null} days={[]} />);
+    expect(screen.queryByText('Add to Day')).toBeNull();
+  });
+
+
   it('FE-PLANNER-INSPECTOR-017: "Remove from day" button appears when place IS assigned to selectedDay', () => {
     const assignmentInDay = [{ id: 99, place, day_id: 1, place_id: place.id, order_index: 0, notes: null }];
     render(

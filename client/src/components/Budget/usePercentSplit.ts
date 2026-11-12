@@ -54,6 +54,36 @@ export function amountsToPercents(total: number, amounts: Record<number, string>
   return out
 }
 
+/**
+ * The percentage that closes the split for `payerId`: whatever remains of 100
+ * once everybody else's share is taken. Clamped at zero, because a group can
+ * assign more than 100 % and the payer cannot own a negative share.
+ */
+export function payerRemainderPercent(percents: Record<number, string>, ids: number[], payerId: number): number {
+  const others = ids
+    .filter(id => id !== payerId)
+    .reduce((sum, id) => sum + (Number.parseFloat(percents[id]) || 0), 0)
+  return Math.round(Math.max(0, 100 - others) * 100) / 100
+}
+
+/**
+ * The amount that closes the split for `payerId`, rounded to the currency's
+ * minor unit so the saved shares never carry a fraction of a penny.
+ */
+export function payerRemainderAmount(
+  total: number,
+  amounts: Record<number, string>,
+  ids: number[],
+  payerId: number,
+  currency: string,
+): number {
+  const others = ids
+    .filter(id => id !== payerId)
+    .reduce((sum, id) => sum + (Number.parseFloat(amounts[id]) || 0), 0)
+  const factor = 10 ** currencyDecimals(currency)
+  return Math.round((total - others) * factor) / factor
+}
+
 interface Args {
   total: number
   participants: Set<number>

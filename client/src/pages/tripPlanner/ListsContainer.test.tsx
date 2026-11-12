@@ -15,6 +15,7 @@ const stub = vi.hoisted(() => (name: string) => (props: Record<string, unknown>)
 })
 vi.mock('../../components/Packing/PackingListPanel', () => ({ default: stub('packingPanel') }))
 vi.mock('../../components/Todo/TodoListPanel', () => ({ default: stub('todoPanel') }))
+vi.mock('../../components/Outfits/OutfitsPlannerPanel', () => ({ default: stub('outfitsPanel') }))
 vi.mock('../../components/Packing/ApplyTemplateButton', () => ({ default: stub('applyTemplate') }))
 vi.mock('../../components/Packing/PackingExportMenu', () => ({ default: stub('exportMenu') }))
 
@@ -119,5 +120,18 @@ describe('ListsContainer', () => {
     expect(captured.applyTemplate).toMatchObject({ visibility: 'personal' })
     expect(captured.exportMenu).toMatchObject({ view: 'personal' })
     expect(captured.packingPanel).toMatchObject({ view: 'personal' })
+  })
+
+  it('FE-PAGE-PLANNER-LISTS-007: the outfits tab brings back the wardrobe planner and counts planned outfits', async () => {
+    seed()
+    seedStore(useTripStore, { outfits: [{ id: 1 }, { id: 2 }] as never })
+    renderLists()
+
+    fireEvent.click(screen.getByRole('button', { name: /Outfits\s*2/ }))
+
+    expect(await loaded('outfitsPanel')).toMatchObject({ tripId: TRIP_ID })
+    expect(sessionStorage.getItem(`trip-lists-subtab-${TRIP_ID}`)).toBe('outfits')
+    // The packing-only tools leave with their tab.
+    expect(screen.queryByRole('button', { name: 'Import' })).toBeNull()
   })
 })

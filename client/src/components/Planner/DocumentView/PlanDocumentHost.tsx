@@ -102,6 +102,14 @@ export const PlanDocumentHost: React.FC<PlanDocumentHostProps> = (props) => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isEnabled, viewMode, setViewMode])
 
+  // Print styles only unwind the planner while the document is the visible
+  // stage; Ctrl+P on the map must not print a document nobody is looking at.
+  useEffect(() => {
+    const active = isEnabled && viewMode === 'document'
+    document.body.classList.toggle('trek-doc-print', active)
+    return () => document.body.classList.remove('trek-doc-print')
+  }, [isEnabled, viewMode])
+
   if (!isEnabled) return null
 
   const isBrowser = typeof document !== 'undefined'

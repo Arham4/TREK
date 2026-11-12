@@ -384,7 +384,14 @@ export class ReservationsRepository extends TrekRepository<Reservations> {
       .selectFrom('reservations as r')
       .leftJoin('days as d', 'd.id', 'r.day_id')
       .leftJoin('places as p', 'p.id', 'r.place_id')
-      .leftJoin('day_accommodations as ap', 'ap.id', 'r.accommodation_id')
+      // A copied trip keeps its own day_accommodations rows, but the cloned
+      // reservations still point at the source trip's stay ids ("1.0".."10.0"
+      // on Trip 11 pointing at Trip 8's stays). Without the trip guard the
+      // join leaks the other trip's stay and its place, so the map pins the
+      // booking in the wrong trip (or drops it when the place is missing).
+      .leftJoin('day_accommodations as ap', (join) =>
+        join.onRef('ap.id', '=', 'r.accommodation_id').onRef('ap.trip_id', '=', 'r.trip_id'),
+      )
       .leftJoin('places as acc_p', 'acc_p.id', 'ap.place_id')
       .selectAll('r')
       .select([

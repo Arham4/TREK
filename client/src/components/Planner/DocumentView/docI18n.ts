@@ -32,6 +32,18 @@ export interface DocI18nStrings {
   driveTime: string
   transitTime: string
   viewOnMap: string
+  dragStop: string
+  editNoteHint: string
+  addNoteInline: string
+  notePlaceholder: string
+  noteEditorLabel: string
+  insertStop: string
+  insertSearchPlaceholder: string
+  insertNewPlace: string
+  insertNoPlaces: string
+  editDayTitle: string
+  outlineOpen: string
+  outlineClose: string
 }
 
 const EN_STRINGS: DocI18nStrings = {
@@ -66,6 +78,18 @@ const EN_STRINGS: DocI18nStrings = {
   driveTime: 'drive',
   transitTime: 'transit',
   viewOnMap: 'View on map',
+  dragStop: 'Drag to reorder',
+  editNoteHint: 'Click to edit this note',
+  addNoteInline: 'Add a note',
+  notePlaceholder: 'Write a note for this stop...',
+  noteEditorLabel: 'Note for this stop',
+  insertStop: 'Insert a stop here',
+  insertSearchPlaceholder: 'Search places...',
+  insertNewPlace: 'Create a new place',
+  insertNoPlaces: 'Every place is already on this day.',
+  editDayTitle: 'Click to rename this day',
+  outlineOpen: 'Open itinerary outline',
+  outlineClose: 'Close itinerary outline',
 }
 
 const DE_STRINGS: Partial<DocI18nStrings> = {

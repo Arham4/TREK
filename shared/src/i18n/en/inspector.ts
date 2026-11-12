@@ -11,6 +11,7 @@ const inspector: TranslationStrings = {
   'inspector.remove': 'Remove',
   'inspector.removeFromDay': 'Remove from Day',
   'inspector.addToDay': 'Add to Day',
+  'inspector.chooseDay': 'Choose a day',
   'inspector.confirmedRes': 'Confirmed Reservation',
   'inspector.pendingRes': 'Pending Reservation',
   'inspector.google': 'Google Maps',

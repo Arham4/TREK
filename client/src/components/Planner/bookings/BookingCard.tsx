@@ -13,7 +13,7 @@ import { PluginCardFooter } from '../../Plugins/PluginContributions'
 import { fmtTransitDuration } from '../transitDisplay'
 import { formatMoney } from '../../../utils/formatters'
 import { parseMeta, displayTitle, type CostTotal } from './bookingsModel'
-import type { BookingFacts } from './bookingFacts'
+import { stayStats, type BookingFacts } from './bookingFacts'
 import {
   AirTrailPill, BOX, Block, Field, FileRows, ReviewPill, RoundAction, RouteBox, StatusDot, TravelerChips, TypeChip, WhenFields,
   fs, toneOf, toneTint,
@@ -48,6 +48,8 @@ export default function BookingCard(p: BookingCardProps) {
   const { t, locale } = useTranslation()
   const tone = toneOf(r)
   const transit = r.type === 'transit'
+  // A stay's dates and nights where a clock time would tell the reader nothing.
+  const stay = facts.isHotel ? stayStats(facts, parseMeta(r), t, locale) : []
 
   return (
     <article
@@ -70,7 +72,23 @@ export default function BookingCard(p: BookingCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-2 px-3 pb-3 pt-2.5">
-        <WhenFields facts={facts} />
+        {stay.length > 0 ? (
+          <div data-testid="booking-stay-dates" className="flex flex-col gap-1.5">
+            {/* The linked days stay on the card: the dates answer "when", the
+                day labels answer "where in the plan". */}
+            {facts.day && (
+              <div className="min-w-0 truncate text-caption text-content-muted">
+                {facts.day.label}
+                {facts.day.date && <span className="ms-1.5 text-content-faint">{facts.day.date}</span>}
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-2">
+              {stay.map(s => <Field key={s.label} label={s.label}>{s.value}</Field>)}
+            </div>
+          </div>
+        ) : (
+          <WhenFields facts={facts} />
+        )}
 
         {transit ? <TransitBody r={r} /> : (
           <>

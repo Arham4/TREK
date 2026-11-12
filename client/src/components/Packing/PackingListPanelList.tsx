@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Plus, Tags } from 'lucide-react'
+import { AnchoredMenu } from '../shared/AnchoredMenu'
 import type { PackingState } from './usePackingListPanel'
 import { KategorieGruppe } from './PackingListPanelCategoryGroup'
 import EmptyState from '../shared/EmptyState'
@@ -15,6 +17,25 @@ export function PackingList(S: PackingState) {
   const [draggedCategory, setDraggedCategory] = useState<string | null>(null)
   const [overCategory, setOverCategory] = useState<string | null>(null)
   const endCategoryDrag = () => { setDraggedCategory(null); setOverCategory(null) }
+  // One composer at the foot of the whole list, beside the per-card ones: type a
+  // name, press Enter, and it lands in the category the select shows.
+  const [quickName, setQuickName] = useState('')
+  const [quickCategory, setQuickCategory] = useState('')
+  const [quickSaving, setQuickSaving] = useState(false)
+  const [catMenuOpen, setCatMenuOpen] = useState(false)
+  const catAnchorRef = useRef<HTMLButtonElement | null>(null)
+  const category = allCategories.includes(quickCategory) ? quickCategory : (allCategories[0] ?? t('packing.defaultCategory'))
+  const quickAdd = async () => {
+    const name = quickName.trim()
+    if (!name || quickSaving) return
+    setQuickSaving(true)
+    try {
+      await handleAddItemToCategory(category, name)
+      setQuickName('')
+    } finally {
+      setQuickSaving(false)
+    }
+  }
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0 16px' }}>
       {items.length === 0 ? (
@@ -62,6 +83,57 @@ export function PackingList(S: PackingState) {
             />
           ))}
         </div>
+      )}
+      {canEdit && (
+        <form
+          onSubmit={e => { e.preventDefault(); void quickAdd() }}
+          className="sticky bottom-0 mx-2 mt-3 flex items-center gap-2 rounded-2xl border border-edge bg-surface-card/95 px-3 py-2 shadow-lg backdrop-blur-md"
+        >
+          <Plus size={15} className="flex-none text-content-faint" />
+          <input
+            value={quickName}
+            onChange={e => setQuickName(e.target.value)}
+            placeholder={t('packing.quickAddPlaceholder')}
+            aria-label={t('packing.quickAddPlaceholder')}
+            data-testid="packing-quick-add"
+            className="min-w-0 flex-1 border-0 bg-transparent text-body text-content outline-none placeholder:text-content-faint"
+          />
+          <button
+            type="button"
+            ref={catAnchorRef}
+            onClick={() => setCatMenuOpen(o => !o)}
+            aria-label={t('places.formCategory')}
+            aria-haspopup="menu"
+            aria-expanded={catMenuOpen}
+            title={category}
+            className="inline-flex max-w-[8.5rem] flex-none items-center gap-1 rounded-lg border border-edge-faint bg-surface px-1.5 py-1 text-caption font-semibold text-content-muted hover:text-content"
+          >
+            <Tags size={12} className="flex-none" />
+            <span className="truncate">{t('places.formCategory')}</span>
+          </button>
+          <button
+            type="submit"
+            disabled={!quickName.trim() || quickSaving}
+            aria-label={t('packing.quickAddAction')}
+            className={`grid h-7 w-7 flex-none place-items-center rounded-lg ${quickName.trim() ? 'bg-accent text-accent-text' : 'bg-surface-tertiary text-content-faint'}`}
+          >
+            <Plus size={15} strokeWidth={2.5} />
+          </button>
+        </form>
+      )}
+      {catMenuOpen && (
+        <AnchoredMenu
+          anchor={catAnchorRef.current}
+          onClose={() => setCatMenuOpen(false)}
+          title={t('places.formCategory')}
+          label={t('places.formCategory')}
+          items={allCategories.map(cat => ({
+            key: cat,
+            label: cat,
+            icon: <span className="h-2 w-2 rounded-full bg-accent" />,
+            onSelect: () => setQuickCategory(cat),
+          }))}
+        />
       )}
     </div>
   )

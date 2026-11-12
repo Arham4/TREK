@@ -169,6 +169,12 @@ export function useDayPlanEdits(options: DayPlanEditsOptions) {
     catch (err: unknown) { toast.error(err instanceof Error ? err.message : t('common.unknownError')) }
   }, [tripId, toast])
 
+  /** Saves a stop's day-specific note from the document's inline editor. */
+  const handleUpdateAssignmentNotes = useCallback(async (dayId: number, assignmentId: number, notes: string | null) => {
+    try { await tripActions.setAssignmentNotes(tripId, dayId, assignmentId, notes) }
+    catch (err: unknown) { toast.error(err instanceof Error ? err.message : t('common.unknownError')) }
+  }, [tripId, tripActions, toast, t])
+
   const handleReorderDays = useCallback((orderedIds: number[]) => {
     // The server moves the bookings' dates along with their days, so a new order
     // of the days needs a connection, like adding or deleting one.
@@ -191,7 +197,7 @@ export function useDayPlanEdits(options: DayPlanEditsOptions) {
   }, [tripId, toast, pushUndo])
 
   return {
-    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleUpdateDayTitle, handleReorderDays,
+    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleUpdateDayTitle, handleUpdateAssignmentNotes, handleReorderDays,
   }
 }
 

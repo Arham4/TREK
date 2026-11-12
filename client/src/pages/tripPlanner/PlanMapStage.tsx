@@ -1,4 +1,5 @@
 import type { Dispatch, ReactElement, SetStateAction } from 'react'
+import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { MapViewAuto as MapView } from '../../components/Map/MapViewAuto'
 import { MapCompassPill, type CompassMap } from '../../components/Map/MapCompassPill'
@@ -8,6 +9,7 @@ import PoiCategoryPill from '../../components/Map/PoiCategoryPill'
 import ActivityCompareLegend from '../../components/Tours/activity/ActivityCompareLegend'
 import { useActivityCompareMap } from '../../components/Tours/activity/useActivityCompareMap'
 import type { Poi } from '../../components/Map/poiCategories'
+import { bookingPoints as bookingPointsOf } from '../../components/Map/bookingPoints'
 import type { Settings } from '../../types'
 import { RoadtripAlternativesBar } from './plannerLazy'
 import { LazyPanel } from './LazyPanel'
@@ -82,6 +84,9 @@ export function PlanMapStage({
     enabled: !roadtripActive && !overviewActive && !isMobile,
     places, mapPlaces, route, routeWalking, selectedPlaceId,
   })
+  // Point bookings (a hotel, a tour, a restaurant) stand on the map even though
+  // they draw no route; the place they link supplies the coordinate.
+  const bookingPins = useMemo(() => bookingPointsOf(reservations, places), [reservations, places])
   return (
     <>
       <MapView
@@ -120,6 +125,7 @@ export function PlanMapStage({
         inspectorHeight={selectedPlace ? inspectorHeight : 0}
         hasDayDetail={!!showDayDetail && !selectedPlace}
         reservations={reservations}
+        bookingPoints={bookingPins}
         showReservationStats={true}
         // In road trip mode the rides that seam the drive are drawn as their own arcs
         // beside the roads, on top of what the reader switched on under Days.

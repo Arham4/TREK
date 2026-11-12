@@ -10,6 +10,8 @@ const todo: TranslationStrings = {
   'todo.filter.done': 'Done',
   'todo.uncategorized': 'No list',
   'todo.namePlaceholder': 'Task name',
+  'todo.quickAddPlaceholder': 'Add a task and press Enter...',
+  'todo.quickAddAction': 'Add task',
   'todo.descriptionPlaceholder': 'Description (optional)',
   'todo.editDescription': 'Click to edit, links open directly',
   'todo.unassigned': 'Unassigned',

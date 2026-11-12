@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent } from '../../../../tests/helpers/render'
+import { render, screen, fireEvent, within } from '../../../../tests/helpers/render'
 import PlanDocumentHost from './PlanDocumentHost'
 import type { Trip, Day, Place, Category, AssignmentsMap } from '../../../../types'
 
@@ -110,7 +110,8 @@ describe('PlanDocumentHost', () => {
     fireEvent.click(switchBtn)
 
     expect(screen.getByTestId('plan-document-stage')).toBeInTheDocument()
-    expect(screen.getByText('Autumn in Kyoto')).toBeInTheDocument()
+    // The title appears in the hero and in the outline rail.
+    expect(screen.getAllByText('Autumn in Kyoto').length).toBeGreaterThan(0)
     expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument()
     expect(screen.getByText('Gion Karyo')).toBeInTheDocument()
     expect(screen.getByText('Remember to see the golden reflection in the pond.')).toBeInTheDocument()
@@ -206,6 +207,48 @@ describe('PlanDocumentHost', () => {
     expect(screen.getByText('Fushimi Inari Shrine')).toBeInTheDocument()
   })
 
+  it('FE-DOCVIEW-009: the print flow class follows the visible view, not the saved preference', () => {
+    localStorage.setItem('trek_plan_view_mode', 'map')
+    render(
+      <PlanDocumentHost
+        tripId={101}
+        trip={MOCK_TRIP}
+        days={MOCK_DAYS}
+        places={MOCK_PLACES}
+        categories={MOCK_CATEGORIES}
+        assignments={MOCK_ASSIGNMENTS}
+      />
+    )
+    expect(document.body.classList.contains('trek-doc-print')).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: /Document Plan/i }))
+    expect(document.body.classList.contains('trek-doc-print')).toBe(true)
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Map View|View on map/i })[0])
+    expect(document.body.classList.contains('trek-doc-print')).toBe(false)
+  })
+
+  it('FE-DOCVIEW-010: the phone outline button opens the drawer and a day closes it', () => {
+    localStorage.setItem('trek_plan_view_mode', 'document')
+    render(
+      <PlanDocumentHost
+        tripId={101}
+        trip={MOCK_TRIP}
+        days={MOCK_DAYS}
+        places={MOCK_PLACES}
+        categories={MOCK_CATEGORIES}
+        assignments={MOCK_ASSIGNMENTS}
+      />
+    )
+
+    expect(screen.queryByTestId('doc-mobile-outline-drawer')).toBeNull()
+    fireEvent.click(screen.getByTestId('doc-mobile-outline-toggle'))
+    expect(screen.getByTestId('doc-mobile-outline-drawer')).toBeInTheDocument()
+
+    fireEvent.click(within(screen.getByTestId('doc-mobile-outline-drawer')).getAllByText('Arashiyama Bamboo Grove')[0])
+    expect(screen.queryByTestId('doc-mobile-outline-drawer')).toBeNull()
+  })
+
   it('FE-DOCVIEW-008: handles transport reservations and accommodations safely without errors', () => {
     localStorage.setItem('trek_plan_view_mode', 'document')
     const mockReservations = [
@@ -245,6 +288,6 @@ describe('PlanDocumentHost', () => {
     )
 
     expect(screen.getByTestId('plan-document-stage')).toBeInTheDocument()
-    expect(screen.getByText('Autumn in Kyoto')).toBeInTheDocument()
+    expect(screen.getAllByText('Autumn in Kyoto').length).toBeGreaterThan(0)
   })
 })
