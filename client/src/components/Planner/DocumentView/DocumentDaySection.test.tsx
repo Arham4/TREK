@@ -1,4 +1,4 @@
-// FE-DOC-DAY-001 to FE-DOC-DAY-006
+// FE-DOC-DAY-001 to FE-DOC-DAY-009
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '../../../../tests/helpers/render'
 import { DocumentDaySection } from './DocumentDaySection'
@@ -173,5 +173,19 @@ describe('DocumentDaySection editing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep time' }))
     expect(onReorderDay).not.toHaveBeenCalled()
     expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('FE-DOC-DAY-009: the picker offers to create an unmatched search as a stop at that slot', () => {
+    const onCreatePlaceAt = vi.fn()
+    renderSection({ onCreatePlaceAt })
+
+    const divider = screen.getByTestId('doc-insert-1-0')
+    fireEvent.click(within(divider).getByRole('button', { name: 'Insert a stop here' }))
+    fireEvent.change(screen.getByPlaceholderText('Search places...'), { target: { value: 'Brand New Cove' } })
+
+    const create = screen.getByTestId('doc-insert-create')
+    expect(create).toHaveTextContent('Brand New Cove')
+    fireEvent.click(create)
+    expect(onCreatePlaceAt).toHaveBeenCalledWith('Brand New Cove', 1, 0)
   })
 })

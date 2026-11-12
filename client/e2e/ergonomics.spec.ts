@@ -73,8 +73,12 @@ test.beforeAll(async ({ request }) => {
     place_id: secondPlace.id,
   })
   // Every day carries a stop, so the printed document is genuinely long.
-  for (const id of dayIds.slice(1)) {
-    await post(request, `/api/trips/${tripId}/days/${id}/assignments`, { place_id: sightPlace.id })
+  // Day two's stop carries a multi-line Markdown note for the rendering test.
+  for (const [i, id] of dayIds.slice(1).entries()) {
+    await post(request, `/api/trips/${tripId}/days/${id}/assignments`, {
+      place_id: sightPlace.id,
+      ...(i === 0 ? { notes: '**Bold** plan\nsecond line' } : {}),
+    })
   }
 
   const acc = await post<{ accommodation: { id: number } }>(request, `/api/trips/${tripId}/accommodations`, {
@@ -288,6 +292,86 @@ test('a stop dragged onto another day moves there', async ({ page, request }) =>
     const list = (body.assignments || body) as Array<{ place?: { name?: string }; place_name?: string }>
     return list.map(a => a.place?.name || a.place_name)
   }, { timeout: 15_000 }).not.toContain(movingName)
+})
+
+test('the unassigned drawer opens below the navbar and tab bar, and its close button works', async ({ page }) => {
+  await openPlan(page)
+  await page.getByRole('button', { name: /Unassigned Places/ }).first().click()
+
+  const drawer = page.getByRole('dialog', { name: 'Unassigned Places & Ideas' })
+  await expect(drawer).toBeVisible()
+  // The drawer starts below the navbar + tab strip instead of behind them, so
+  // the header and its Close button take pointer events.
+  const box = await drawer.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.y).toBeGreaterThanOrEqual(90)
+
+  // A covered Close button would fail here on the intercepted pointer events.
+  await drawer.getByRole('button', { name: 'Close' }).click()
+  await expect(drawer).toHaveCount(0)
+})
+
+test('a stop note renders markdown across lines instead of truncating', async ({ page }) => {
+  await openPlan(page)
+  const day = page.locator(`section#doc-day-${dayIds[1]}`)
+
+  const note = day.getByRole('button', { name: /Bold/ })
+  await expect(note).toBeVisible()
+  // The bold run is formatted, and the second line is there, not ellipsized.
+  await expect(note.locator('strong')).toHaveText('Bold')
+  await expect(note).toContainText('second line')
+  const cls = await note.getAttribute('class')
+  expect(cls).not.toMatch(/truncate/)
+})
+
+test('a timed stop dragged out of order asks to drop its time and then sticks', async ({ page, request }) => {
+  const targetDayId = dayIds[2]
+  const listRes = await request.get(`/api/trips/${tripId}/days/${targetDayId}/assignments`)
+  expect(listRes.ok()).toBeTruthy()
+  const listBody = await listRes.json()
+  const list = (listBody.assignments || listBody) as Array<{ id: number; place?: { name?: string }; place_name?: string }>
+  expect(list.length).toBeGreaterThanOrEqual(2)
+  const [first, second] = list
+  const firstName = first.place?.name || first.place_name || ''
+  const secondName = second.place?.name || second.place_name || ''
+  expect(firstName).toBeTruthy()
+  expect(secondName).toBeTruthy()
+
+  const put1 = await request.put(`/api/trips/${tripId}/assignments/${first.id}/time`, { data: { place_time: '09:00', end_time: null } })
+  expect(put1.ok(), await put1.text()).toBeTruthy()
+  const put2 = await request.put(`/api/trips/${tripId}/assignments/${second.id}/time`, { data: { place_time: '18:00', end_time: null } })
+  expect(put2.ok(), await put2.text()).toBeTruthy()
+
+  await openPlan(page)
+  const day = page.locator(`section#doc-day-${targetDayId}`)
+
+  // Drag the 09:00 stop after the 18:00 one.
+  await page.evaluate(({ dayId }) => {
+    const source = document.querySelector(`section#doc-day-${dayId} [title="Drag to reorder"]`) as HTMLElement | null
+    const target = document.querySelector(`[data-testid="doc-insert-${dayId}-2"]`) as HTMLElement | null
+    if (!source || !target) throw new Error('drag source or target missing')
+    const dt = new DataTransfer()
+    source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }))
+    target.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }))
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }))
+    source.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }))
+  }, { dayId: targetDayId })
+
+  // Out of time order, so the section holds the move behind a confirm.
+  await expect(day.getByRole('alertdialog')).toBeVisible()
+  await day.getByRole('button', { name: 'Remove time & move' }).click()
+
+  await expect.poll(async () => {
+    const res = await request.get(`/api/trips/${tripId}/days/${targetDayId}/assignments`)
+    const body = await res.json()
+    const items = (body.assignments || body) as Array<{ place?: { name?: string }; place_name?: string }>
+    return items.map(a => a.place?.name || a.place_name).filter(Boolean)
+  }, { timeout: 15_000 }).toEqual([secondName, firstName])
+
+  // And the new order survives a reload instead of snapping back to the clock.
+  await openPlan(page)
+  const html = await page.locator(`section#doc-day-${targetDayId}`).innerHTML()
+  expect(html.indexOf(secondName)).toBeLessThan(html.indexOf(firstName))
 })
 
 test('toggling to the map and back keeps the document scroll position', async ({ page }) => {

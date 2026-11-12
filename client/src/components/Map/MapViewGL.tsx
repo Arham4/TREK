@@ -1315,6 +1315,8 @@ export function MapViewGL({
     // contextmenu arrives after mouseup, so every rotate would end by opening
     // the Add-Place form. Track the right-button press position and drop a
     // contextmenu whose pointer travelled like a drag rather than a click.
+    // The tolerance is a click's jitter, not a pixel: a trackpad right-click
+    // that shifts a few pixels mid-press is still a click, not a rotate.
     let rightDownAt: { x: number; y: number } | null = null
     const onAuxDown = (ev: MouseEvent) => {
       if (ev.button === 2) {
@@ -1336,7 +1338,7 @@ export function MapViewGL({
     map.on('contextmenu', (e: { lngLat: { lat: number; lng: number }; originalEvent: MouseEvent }) => {
       const down = rightDownAt
       rightDownAt = null
-      if (down && Math.hypot(e.originalEvent.clientX - down.x, e.originalEvent.clientY - down.y) > 5) return
+      if (down && Math.hypot(e.originalEvent.clientX - down.x, e.originalEvent.clientY - down.y) > 8) return
       fireContext(e.lngLat, e.originalEvent)
     })
     // Touch long-press: 600 ms hold (Leaflet's tapHold feel) with a 10 px

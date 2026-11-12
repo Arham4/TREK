@@ -196,8 +196,22 @@ export function useDayPlanEdits(options: DayPlanEditsOptions) {
       .catch(err => toast.error(err instanceof Error ? err.message : t('dayplan.reorderError')))
   }, [tripId, toast, pushUndo])
 
+  /** Creates a brand-new place and inserts it at an exact slot of a day. */
+  const handleCreatePlaceAt = useCallback(async (name: string, dayId: number, position?: number) => {
+    const trimmed = name.trim()
+    if (!trimmed) return false
+    let place: Place
+    try {
+      place = await tripActions.addPlace(tripId, { name: trimmed })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('common.unknownError'))
+      return false
+    }
+    return handleAssignToDay(place.id, dayId, position)
+  }, [tripId, tripActions, toast, t, handleAssignToDay])
+
   return {
-    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleUpdateDayTitle, handleUpdateAssignmentNotes, handleReorderDays,
+    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleUpdateDayTitle, handleUpdateAssignmentNotes, handleReorderDays, handleCreatePlaceAt,
   }
 }
 

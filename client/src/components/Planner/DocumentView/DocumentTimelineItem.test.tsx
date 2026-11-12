@@ -1,8 +1,8 @@
-// FE-DOC-ITEM-001 to FE-DOC-ITEM-003
+// FE-DOC-ITEM-001 to FE-DOC-ITEM-005
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '../../../../tests/helpers/render'
 import { DocumentTimelineItem } from './DocumentTimelineItem'
-import { buildAssignment, buildPlace } from '../../../../tests/helpers/factories'
+import { buildAssignment, buildPlace, buildReservation, buildTripFile } from '../../../../tests/helpers/factories'
 import type { MergedItem } from '../../../utils/dayMerge'
 import type { Category } from '../../../types'
 
@@ -60,5 +60,23 @@ describe('DocumentTimelineItem inline notes', () => {
 
     // Nothing typed: no write at all, not a pointless clear.
     expect(onUpdateNotes).not.toHaveBeenCalled()
+  })
+
+  it('FE-DOC-ITEM-004: a booking chip shows its attached boarding pass', () => {
+    const res = buildReservation({ id: 701, type: 'tour', assignment_id: 501, title: 'Louvre tour' })
+    const files = [buildTripFile({ id: 801, trip_id: 1, reservation_id: 701, original_name: 'boarding.pdf' })]
+    renderItem({ reservations: [res], files })
+
+    expect(screen.getByText('boarding.pdf')).toBeInTheDocument()
+  })
+
+  it('FE-DOC-ITEM-005: no pill without files, and trashed files stay hidden', () => {
+    const res = buildReservation({ id: 702, type: 'tour', assignment_id: 501, title: 'Louvre tour' })
+    renderItem({ reservations: [res], files: [] })
+    expect(screen.queryByText(/boarding|files/)).toBeNull()
+
+    const trashed = [buildTripFile({ id: 802, trip_id: 1, reservation_id: 702, original_name: 'gone.pdf', deleted_at: '2026-01-01' })]
+    renderItem({ reservations: [res], files: trashed })
+    expect(screen.queryByText('gone.pdf')).toBeNull()
   })
 })

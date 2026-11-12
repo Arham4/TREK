@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react'
 import {
   Clock, MapPin, ChevronUp, ChevronDown, Edit2, Trash2,
   ExternalLink, Plane, Train, Car, Bus, Ticket, Footprints, MessageSquare,
-  Star, Sparkles, Navigation, DollarSign, GripVertical
+  Star, Sparkles, Navigation, DollarSign, GripVertical, Paperclip
 } from 'lucide-react'
 import type { MergedItem } from '../../../utils/dayMerge'
-import type { Place, Category, Assignment, Reservation, DayNote } from '../../../types'
+import type { Place, Category, Assignment, Reservation, DayNote, TripFile } from '../../../types'
 import { getAssignmentReservations, getDisplayTimeForDay } from '../../../utils/dayMerge'
+import { filesFor } from '../../../utils/reservationFiles'
+import { useOpenFile } from '../bookings/bookingParts'
 import PlaceAvatar from '../../shared/PlaceAvatar'
 import { getCategoryIcon } from '../../shared/categoryIcons'
 import Markdown from 'react-markdown'
@@ -24,6 +26,8 @@ interface DocumentTimelineItemProps {
   categories: Category[]
   compactMode?: boolean
   reservations?: Reservation[]
+  /** The trip's files, so booking chips can show their boarding passes. */
+  files?: TripFile[]
   locale?: string
   timeFormat?: string
   onPlaceClick?: (placeId: number, assignmentId?: number) => void
@@ -37,6 +41,27 @@ interface DocumentTimelineItemProps {
   dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>
 }
 
+/**
+ * A booking's attached files as one compact pill: the boarding pass without
+ * leaving the document. Opens the first file; the tooltip names them all.
+ */
+const FilePill: React.FC<{ res: Reservation; files: TripFile[] }> = ({ res, files }) => {
+  const open = useOpenFile()
+  const attached = filesFor(res, files)
+  if (attached.length === 0) return null
+  const names = attached.map(f => f.original_name).join(', ')
+  return (
+    <span
+      onClick={(e) => { e.stopPropagation(); open(attached[0]) }}
+      title={names}
+      className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1 flex-shrink-0 cursor-pointer hover:bg-sky-500/20"
+    >
+      <Paperclip size={10} />
+      <span>{attached.length > 1 ? `${attached.length} files` : (attached[0].original_name.length > 18 ? `${attached[0].original_name.slice(0, 17)}…` : attached[0].original_name)}</span>
+    </span>
+  )
+}
+
 export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
   item,
   dayId,
@@ -45,6 +70,7 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
   categories,
   compactMode = true,
   reservations = [],
+  files = [],
   locale = 'en',
   timeFormat = '24h',
   onPlaceClick,
@@ -182,15 +208,18 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
                   <span>{linkedReservations[0].title || 'Ticket'}</span>
                 </span>
               )}
+
+              {/* Boarding passes: the booking's files without leaving the document. */}
+              {linkedReservations.length > 0 && <FilePill res={linkedReservations[0]} files={files} />}
             </div>
 
-            {/* Hover Action Buttons */}
-            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+            {/* Hover Action Buttons (also revealed by keyboard focus within the row). */}
+            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 transition-opacity">
               {onUpdateNotes && !assignment.notes && (
                 <button
                   type="button"
                   onClick={() => startNotesEdit(assignment.notes)}
-                  className="p-1 rounded text-content-faint hover:text-content hover:bg-surface-secondary transition-colors cursor-pointer"
+                  className="p-1 rounded text-content-faint hover:text-content hover:bg-surface-secondary focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent transition-colors cursor-pointer"
                   title={strings.addNoteInline}
                 >
                   <MessageSquare size={12} />
@@ -200,7 +229,7 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
                 <button
                   type="button"
                   onClick={() => onEditPlace(place, assignment.id)}
-                  className="p-1 rounded text-content-faint hover:text-content hover:bg-surface-secondary transition-colors cursor-pointer"
+                  className="p-1 rounded text-content-faint hover:text-content hover:bg-surface-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent transition-colors cursor-pointer"
                   title="Edit place"
                 >
                   <Edit2 size={12} />
@@ -210,7 +239,7 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
                 <button
                   type="button"
                   onClick={() => onRemoveAssignment(dayId, assignment.id)}
-                  className="p-1 rounded text-danger/70 hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                  className="p-1 rounded text-danger/70 hover:text-danger hover:bg-danger/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger transition-colors cursor-pointer"
                   title="Remove from day"
                 >
                   <Trash2 size={12} />
@@ -328,8 +357,8 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
               )}
             </div>
 
-            {/* Hover-only subtle quick actions */}
-            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+            {/* Hover-only subtle quick actions (also revealed by keyboard focus within the card). */}
+            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 transition-opacity">
               {onMoveItem && (
                 <>
                   <button
@@ -426,6 +455,7 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
                     <span>{res.title || 'Reservation'}</span>
                     {formattedResTime && <span className="font-mono">· {formattedResTime}</span>}
                     {res.reservation_code && <span className="font-mono text-content-muted">#{res.reservation_code}</span>}
+                    <FilePill res={res} files={files} />
                   </div>
                 )
               })}
@@ -551,6 +581,8 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
                 #{res.reservation_code}
               </span>
             )}
+
+            <FilePill res={res} files={files} />
           </div>
           {formattedEndTime && (
             <span className="text-caption text-content-faint font-mono hidden sm:inline">
@@ -619,6 +651,7 @@ export const DocumentTimelineItem: React.FC<DocumentTimelineItemProps> = ({
                 Conf: #{res.reservation_code}
               </span>
             )}
+            <FilePill res={res} files={files} />
           </div>
 
           <h4 className="text-title font-bold text-content mt-1">

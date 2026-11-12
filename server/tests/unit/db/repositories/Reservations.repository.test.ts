@@ -609,6 +609,31 @@ describe('ReservationsRepository — Task 2 reads (listForTrip / findWithJoins /
     expect(typed).toEqual(legacy);
     expect(typed.map((r) => r.id).sort((a, b) => a - b)).toEqual([dinner.id, hotel.id].sort((a, b) => a - b));
   });
+
+  it('RS18-GHOST-001: a reservation pointing at another trip\'s stay joins no accommodation', async () => {
+    // A cloned trip keeps the source trip's stay ids ("1.0"–"10.0" on Trip 11
+    // pointing at Trip 8's stays) while r.place_id holds the clone's own
+    // place. The join must not leak the other trip's stay and place.
+    const { user } = createUser(testDb);
+    const tripA = createTrip(testDb, user.id, { title: 'Source' });
+    const placeA = createPlace(testDb, tripA.id, { name: 'Source Hotel' });
+    const dayA = createDay(testDb, tripA.id);
+    const stayA = createDayAccommodation(testDb, tripA.id, placeA.id, dayA.id, dayA.id);
+
+    const tripB = createTrip(testDb, user.id, { title: 'Clone' });
+    const placeB = createPlace(testDb, tripB.id, { name: 'Clone Hotel' });
+    const dayB = createDay(testDb, tripB.id);
+    const ghost = createReservation(testDb, tripB.id, { title: 'Ghost Hotel', type: 'hotel', day_id: dayB.id });
+    await setReservation(ghost.id, { accommodation_id: `${stayA.id}.0`, place: placeB.id });
+
+    const rows = await reservationsRepo.listForTrip(tripB.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      place_name: placeB.name,
+      accommodation_place_id: null,
+      accommodation_name: null,
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

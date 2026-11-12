@@ -47,7 +47,11 @@ export const DocumentUnassignedDrawer: React.FC<DocumentUnassignedDrawerProps> =
   return (
     <div
       className="fixed right-0 w-full sm:w-96 bg-surface-card border-l border-edge shadow-2xl z-[210] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
-      style={{ top: 'var(--nav-h, 64px)', bottom: 0 }}
+      // The whole document stage sits below the navbar + 44px tab strip, and
+      // the strip (z-40 at the page root) paints above the stage's own
+      // stacking context — so the drawer starts below both, or its header
+      // and Close button eat the strip's pointer events.
+      style={{ top: 'calc(var(--nav-h, 64px) + 44px)', bottom: 0 }}
       data-print-hide
       role="dialog"
       aria-label={strings.unassignedDrawerTitle}

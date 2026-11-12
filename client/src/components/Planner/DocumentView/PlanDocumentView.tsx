@@ -289,6 +289,8 @@ export const PlanDocumentView: React.FC<PlanDocumentViewProps> = (props) => {
                 onUpdateDayTitle={props.onUpdateDayTitle}
                 onUpdateNotes={props.onUpdateAssignmentNotes}
                 onClearAssignmentTime={doc.onClearAssignmentTime}
+                onCreatePlaceAt={doc.onCreatePlaceAt}
+                files={doc.files}
               />
             ))}
           </div>

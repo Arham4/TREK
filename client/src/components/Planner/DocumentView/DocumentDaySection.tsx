@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useRef, useState } from 'react'
 import {
   Calendar, Hotel, Plus, Info, MapPin, LogIn, LogOut, Moon, Sun, Search, GripVertical
 } from 'lucide-react'
-import type { Day, Category, Assignment, Place, Accommodation, Reservation } from '../../../types'
+import type { Day, Category, Assignment, Place, Accommodation, Reservation, TripFile } from '../../../types'
 import type { MergedItem } from '../../../utils/dayMerge'
 import { parseTimeToMinutes } from '../../../utils/dayMerge'
 import type { getDayBookendHotels } from '../../../utils/dayOrder'
@@ -42,6 +42,10 @@ interface DocumentDaySectionProps {
   onUpdateNotes?: (dayId: number, assignmentId: number, notes: string | null) => void
   /** Clears a stop's start/end times so a manual reorder that breaks time order sticks. */
   onClearAssignmentTime?: (dayId: number, assignmentId: number) => void | Promise<void>
+  /** The trip's files, so booking chips can show their boarding passes. */
+  files?: TripFile[]
+  /** Creates a new place and inserts it at the picker's slot. */
+  onCreatePlaceAt?: (name: string, dayId: number, position?: number) => void | Promise<void>
 }
 
 export const DocumentDaySection: React.FC<DocumentDaySectionProps> = ({
@@ -70,6 +74,8 @@ export const DocumentDaySection: React.FC<DocumentDaySectionProps> = ({
   onUpdateDayTitle,
   onUpdateNotes,
   onClearAssignmentTime,
+  files = [],
+  onCreatePlaceAt,
 }) => {
   const strings = useDocI18n()
   const dayNumber = day.day_number ?? (index + 1)
@@ -256,6 +262,24 @@ export const DocumentDaySection: React.FC<DocumentDaySectionProps> = ({
               />
             </div>
             <div className="max-h-56 overflow-y-auto">
+              {onCreatePlaceAt && (() => {
+                const name = pickerQuery.trim()
+                const exact = name !== '' && places.some(p => p.name?.toLowerCase() === name.toLowerCase())
+                if (!name || exact) return null
+                return (
+                  <button
+                    type="button"
+                    data-testid="doc-insert-create"
+                    onClick={() => { void onCreatePlaceAt(name, day.id, position); setPickerAt(null); setPickerQuery('') }}
+                    className="flex w-full items-center gap-2 rounded-lg bg-accent/10 px-2 py-1.5 text-left text-caption font-semibold text-accent hover:bg-accent hover:text-accent-text"
+                  >
+                    <Plus size={12} strokeWidth={2.5} className="flex-none" />
+                    <span className="min-w-0 flex-1 truncate">
+                      {strings.insertCreateHere.replace('{q}', name)}
+                    </span>
+                  </button>
+                )
+              })()}
               {insertChoices.length === 0 ? (
                 <p className="m-0 px-2 py-3 text-center text-caption text-content-faint">{strings.insertNoPlaces}</p>
               ) : insertChoices.map(p => (
@@ -500,6 +524,7 @@ export const DocumentDaySection: React.FC<DocumentDaySectionProps> = ({
                 categories={categories}
                 compactMode={compactMode}
                 reservations={reservations}
+                files={files}
                 locale={locale}
                 timeFormat={timeFormat}
                 onPlaceClick={onPlaceClick}

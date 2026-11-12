@@ -167,6 +167,25 @@ describe('bookingFacts: cells', () => {
     const open = bookingFacts(buildReservation({ type: 'hotel', metadata: JSON.stringify({ check_in_time: '15:00' }) }), ctx());
     expect(cell(open, 'reservations.meta.checkIn')).toBe('15:00');
   });
+
+  it('FE-PLANNER-BKFACTS-026: a dated stay keeps no second copy of its check-in/out clocks', () => {
+    // The stay tiles above already print the times, so the grid below drops them.
+    const dated = bookingFacts(buildReservation({
+      type: 'hotel',
+      reservation_time: '2026-11-17T15:00',
+      reservation_end_time: '2026-11-19T11:00',
+      metadata: JSON.stringify({ check_in_time: '15:00', check_out_time: '11:00' }),
+    }), ctx());
+    expect(cell(dated, 'reservations.meta.checkIn')).toBeUndefined();
+    expect(cell(dated, 'reservations.meta.checkOut')).toBeUndefined();
+    // A dateless stay shows no tiles and keeps its clocks.
+    const dateless = bookingFacts(buildReservation({
+      type: 'hotel',
+      metadata: JSON.stringify({ check_in_time: '15:00', check_out_time: '11:00' }),
+    }), ctx());
+    expect(cell(dateless, 'reservations.meta.checkIn')).toBe('15:00');
+    expect(cell(dateless, 'reservations.meta.checkOut')).toBe('11:00');
+  });
 });
 
 describe('stayStats', () => {

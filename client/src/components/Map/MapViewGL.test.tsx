@@ -559,6 +559,18 @@ describe('MapViewGL', () => {
     expect(onContext).toHaveBeenCalledTimes(1)
   })
 
+  it('FE-COMP-MAPVIEWGL-012b: a few pixels of trackpad jitter still count as a right-click', async () => {
+    const onContext = vi.fn()
+    render(<MapViewGL places={[]} fitKey={1} onMapContextMenu={onContext} />)
+    await act(async () => {})
+    const handler = glMap.on.mock.calls.find(c => c[0] === 'contextmenu')?.[1] as (e: unknown) => void
+    act(() => {
+      glCanvasContainer.dispatchEvent(new MouseEvent('mousedown', { button: 2, clientX: 10, clientY: 10, bubbles: true }))
+      handler({ lngLat: { lat: 1, lng: 2 }, originalEvent: new MouseEvent('contextmenu', { clientX: 16, clientY: 14 }) })
+    })
+    expect(onContext).toHaveBeenCalledTimes(1)
+  })
+
   it('FE-COMP-MAPVIEWGL-013: a stale long-press suppression never swallows a later real tap (#1398)', async () => {
     vi.useFakeTimers()
     try {

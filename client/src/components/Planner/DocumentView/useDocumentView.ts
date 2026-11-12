@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import type { Trip, Day, Place, Category, AssignmentsMap, Accommodation, Reservation, DayNote, Assignment } from '../../../types'
+import type { Trip, Day, Place, Category, AssignmentsMap, Accommodation, Reservation, DayNote, Assignment, TripFile } from '../../../types'
 import { getMergedItems as _getMergedItems, getDisplayTimeForDay, getTransportForDay as _getTransportForDay, type MergedItem } from '../../../utils/dayMerge'
 import { getDayBookendHotels } from '../../../utils/dayOrder'
 import { useSettingsStore } from '../../../store/settingsStore'
@@ -13,6 +13,7 @@ export interface UseDocumentViewOptions {
   assignments: AssignmentsMap
   accommodations?: Accommodation[]
   reservations?: Reservation[]
+  files?: TripFile[]
   dayNotes?: Record<string, DayNote[]>
   locale?: string
   onSelectDay?: (dayId: number | null) => void
@@ -34,6 +35,8 @@ export interface UseDocumentViewOptions {
   onDeletePlace?: (placeId: number) => void
   /** Clears a stop's start/end times so a manual reorder that breaks time order sticks. */
   onClearAssignmentTime?: (dayId: number, assignmentId: number) => void | Promise<void>
+  /** Creates a new place and inserts it at an exact slot of a day. */
+  onCreatePlaceAt?: (name: string, dayId: number, position?: number) => void | Promise<void>
 }
 
 export type PlanViewMode = 'map' | 'document'
@@ -48,6 +51,7 @@ export function useDocumentView(options: UseDocumentViewOptions) {
     assignments,
     accommodations = [],
     reservations = [],
+    files = [],
     dayNotes = {},
     locale: propLocale,
     onSelectDay,
@@ -65,6 +69,7 @@ export function useDocumentView(options: UseDocumentViewOptions) {
     onReorder,
     onDeletePlace,
     onClearAssignmentTime,
+    onCreatePlaceAt,
   } = options
 
   // User Settings: Time format & locale
@@ -352,5 +357,7 @@ export function useDocumentView(options: UseDocumentViewOptions) {
     onUpdateAssignmentNotes,
     onDeletePlace,
     onClearAssignmentTime,
+    onCreatePlaceAt,
+    files,
   }
 }

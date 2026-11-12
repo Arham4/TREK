@@ -40,6 +40,7 @@ export interface DocI18nStrings {
   insertStop: string
   insertSearchPlaceholder: string
   insertNewPlace: string
+  insertCreateHere: string
   insertNoPlaces: string
   editDayTitle: string
   outlineOpen: string
@@ -86,6 +87,7 @@ const EN_STRINGS: DocI18nStrings = {
   insertStop: 'Insert a stop here',
   insertSearchPlaceholder: 'Search places...',
   insertNewPlace: 'Create a new place',
+  insertCreateHere: 'Create “{q}” as a stop here',
   insertNoPlaces: 'Every place is already on this day.',
   editDayTitle: 'Click to rename this day',
   outlineOpen: 'Open itinerary outline',
@@ -119,6 +121,7 @@ const DE_STRINGS: Partial<DocI18nStrings> = {
   notesSection: 'Tagesnotizen',
   unassignedDrawerTitle: 'Ungeplante Orte & Ideen',
   unassignedDrawerEmpty: 'Alle Orte sind bereits im Reiseplan eingeteilt!',
+  insertCreateHere: '„{q}“ als Stopp hier erstellen',
   close: 'Schließen',
   walkTime: 'zu Fuß',
   driveTime: 'Fahrt',

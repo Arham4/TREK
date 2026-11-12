@@ -117,7 +117,7 @@ function TripPlannerPageDesktop(): React.ReactElement | null {
     route, routeWalking, routeSegments, routeInfo, setRoute, setRouteInfo, updateRouteForDay,
     handleSelectDay, handlePlaceClick, handleMarkerClick, handleMapClick, handleMapContextMenu, handlePoiClick,
     handleSavePlace, openPlaceEditor, handleDeletePlace, confirmDeletePlace, confirmDeletePlaces, confirmChangeCategory,
-    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleReorderDays, handleAddDay, dayAdd,
+    handleAssignToDay, handleMoveToDay, handleRemoveAssignment, handleReorder, handleReorderDays, handleAddDay, dayAdd, handleCreatePlaceAt,
     handleDeleteTour, handleUpdateDayTitle, handleUpdateAssignmentNotes, deleteDayQuestion, handleDeleteDay,
     clearDayId, clearDayTitle, handleClearDay, cancelClearDay, confirmClearDay, tourDayQuestion, answerTourDay,
     handleSaveReservation, handleSaveTransport, handleDeleteReservation,
@@ -641,6 +641,8 @@ function TripPlannerPageDesktop(): React.ReactElement | null {
               onUpdateDayTitle={handleUpdateDayTitle}
               onUpdateAssignmentNotes={handleUpdateAssignmentNotes}
               onClearAssignmentTime={(dayId, assignmentId) => tripActions.setAssignmentTimes(tripId, dayId, assignmentId, { place_time: null, end_time: null })}
+              files={files}
+              onCreatePlaceAt={can('place_edit', trip) ? handleCreatePlaceAt : undefined}
               onDeletePlace={(placeId) => handleDeletePlace(placeId)}
             />
           </div>

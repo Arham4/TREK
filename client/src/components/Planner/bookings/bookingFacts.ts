@@ -105,10 +105,16 @@ export function bookingFacts(r: Reservation, c: FactsContext): BookingFacts {
   if (!c.hasLinkedCost && meta.price != null && meta.price !== '') {
     cells.push({ label: t('reservations.price'), value: formatPriceText(meta.price, meta.priceCurrency, c.tripCurrency, locale) })
   }
-  if (meta.check_in_time) {
+  // The stay tiles above already print check-in/check-out with their dates and
+  // times, so a dated hotel booking keeps no second copy of the same clocks in
+  // the grid below. A dateless stay shows no tiles and keeps its cells.
+  const startDate = startDt.date || from?.local_date || span.start?.date || null
+  const endDate = endDt.date || to?.local_date || span.end?.date || null
+  const stayTiles = isHotel && (!!startDate || !!endDate)
+  if (!stayTiles && meta.check_in_time) {
     cells.push({ label: t('reservations.meta.checkIn'), value: formatTime(meta.check_in_time, locale, timeFormat) + (meta.check_in_end_time ? ` → ${formatTime(meta.check_in_end_time, locale, timeFormat)}` : '') })
   }
-  if (meta.check_out_time) cells.push({ label: t('reservations.meta.checkOut'), value: formatTime(meta.check_out_time, locale, timeFormat) })
+  if (!stayTiles && meta.check_out_time) cells.push({ label: t('reservations.meta.checkOut'), value: formatTime(meta.check_out_time, locale, timeFormat) })
 
   // Per-segment codes (#1943), only on a real stopover booking.
   const legs = r.type === 'flight' ? getFlightLegs(r) : usesStationRoute(r.type) ? getTrainLegs(r) : []
@@ -123,8 +129,8 @@ export function bookingFacts(r: Reservation, c: FactsContext): BookingFacts {
 
   return {
     day, time, startTime, endTime,
-    startDate: startDt.date || from?.local_date || span.start?.date || null,
-    endDate: endDt.date || to?.local_date || span.end?.date || null,
+    startDate,
+    endDate,
     cells, endpoints: eps.length >= 2 ? eps : [], legCodes,
     place: r.location || r.place_name || null,
     accommodation: r.accommodation_name || null,
