@@ -19,4 +19,11 @@ describe('dayHeadStays', () => {
   it('leaves out the stays that do not cover the day', () => {
     expect(dayHeadStays([stay(1, 11, 12)], days[0], days)).toEqual([]);
   });
+
+  it('names a fanned-out stay once, keeping its first row', () => {
+    // The stays list repeats a stay once per linked booking; Trip 8's list
+    // once carried a second trip's bookings too, doubling every day-header pill.
+    const doubled = [stay(1, 10, 11), stay(1, 10, 11), stay(2, 11, 12)];
+    expect(dayHeadStays(doubled, days[1], days).map((a) => a.id)).toEqual([1, 2]);
+  });
 });

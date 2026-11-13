@@ -92,6 +92,17 @@ describe('DayAccommodationsRepository — fully seeded world', () => {
     expect(typed.find((r) => r.id === bare.id)?.reservation_title).toBeNull();
   });
 
+  it('AC3-GHOST-001: a cloned trip dangling at this trip stays fans no extra rows out', async () => {
+    const { trip, named, bare, booking, otherTrip } = await seed();
+    // Trip 11's shape: its own reservation pointing at Trip 8's stay id.
+    const ghost = createReservation(testDb, otherTrip.id, { title: 'Ghost Stay', type: 'hotel' });
+    await updateRows(t, Reservations, { id: ghost.id }, { accommodation_id: `${named.id}.0` });
+
+    const typed = await repo.listForTripWithPlaceAndBooking(trip.id);
+    expect(typed.map((r) => r.id)).toEqual([named.id, bare.id]);
+    expect(typed.find((r) => r.id === named.id)?.reservation_title).toBe(booking.title);
+  });
+
   it('AC34 findInTrip — matches the legacy statement, scoped by trip (a foreign-trip id misses)', async () => {
     const { trip, named, otherStay } = await seed();
     // test-sql-allow: the raw statement is the legacy oracle this parity test holds the repository to.

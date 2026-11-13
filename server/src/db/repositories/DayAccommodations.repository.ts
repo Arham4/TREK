@@ -35,7 +35,7 @@ export interface DayAccommodationWithPlaceRow extends DayAccommodationRow {
   place_lng: number | null;
 }
 
-/** AC3's projection: {@link DayAccommodationWithPlaceRow} plus the linked booking's title — one row per linked `reservations` row (the LEFT JOIN fans out; parity keeps the duplicates, AC3's own ruling). */
+/** AC3's projection: {@link DayAccommodationWithPlaceRow} plus the linked booking's title — one row per linked `reservations` row of the SAME trip (the LEFT JOIN fans out; same-trip multiples are kept per AC3's parity ruling, but a cloned trip's dangling `accommodation_id` must never leak another trip's bookings in). */
 export interface DayAccommodationListRow extends DayAccommodationWithPlaceRow {
   reservation_title: string | null;
 }
@@ -242,17 +242,27 @@ export class DayAccommodationsRepository extends TrekRepository<DayAccommodation
   /**
    * AC3 (`AccommodationsService.listAccommodations`) — AC2's projection plus
    * `r.title as reservation_title` via `LEFT JOIN reservations r ON
-   * r.accommodation_id = a.id`, `WHERE a.trip_id = ? ORDER BY a.created_at
-   * ASC`. Kysely (the reservations join, see {@link DayAccommodationListKyselyDB}).
-   * Fans out one row per linked booking — the legacy statement's own shape
-   * (the delete path documents more than one booking per stay is legal) —
-   * parity keeps the duplicates, no `DISTINCT`.
+   * r.accommodation_id = a.id AND r.trip_id = a.trip_id`, `WHERE a.trip_id = ?
+   * ORDER BY a.created_at ASC`. Kysely (the reservations join, see {@link DayAccommodationListKyselyDB}).
+   * Fans out one row per linked booking of the same trip — the legacy
+   * statement's own shape (the delete path documents more than one booking
+   * per stay is legal) — parity keeps those duplicates, no `DISTINCT`. The
+   * trip guard is the deliberate exception: without it a cloned trip's
+   * reservations (`accommodation_id` still naming the SOURCE trip's stays,
+   * numerically equal after SQLite's TEXT affinity) fan every source stay
+   * out once per clone booking, and the source trip's day headers name each
+   * hotel twice.
    */
   async listForTripWithPlaceAndBooking(trip_id: number | string): Promise<DayAccommodationListRow[]> {
     const rows = await this.kysely<DayAccommodationListKyselyDB>()
       .selectFrom('day_accommodations as a')
       .leftJoin('places as p', 'p.id', 'a.place_id')
-      .leftJoin('reservations as r', 'r.accommodation_id', 'a.id')
+      // Trip-scoped: a cloned trip's reservations keep the source trip's stay
+      // ids, which compare numerically equal through SQLite's TEXT affinity
+      // (`ReservationsRepository.joinedQuery`'s guard, same gap from this side).
+      .leftJoin('reservations as r', (join) =>
+        join.onRef('r.accommodation_id', '=', 'a.id').onRef('r.trip_id', '=', 'a.trip_id'),
+      )
       .selectAll('a')
       .select([
         'p.name as place_name',
