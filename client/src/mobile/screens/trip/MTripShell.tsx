@@ -228,6 +228,7 @@ export default function MTripShell({
   // of the desktop day-card wash, carried on the day chips. Empty without a plugin.
   const dayTints = usePluginDayTints(tripId)
   const distanceUnit = useSettingsStore(s => s.settings.distance_unit)
+  const outfits = useTripStore(s => s.outfits) || []
 
   const [view, setView] = useState<MTripView>('plan')
   // Its own state rather than a share of `view`: the two tabs carry different
@@ -554,7 +555,6 @@ export default function MTripShell({
 
   const packedCount = packingItems.filter(i => i.checked).length
   const todoOpenCount = todoItems.filter(i => !i.checked).length
-  const outfits = useTripStore(s => s.outfits) || []
 
   // The stage header: the day on screen and what it costs, or the whole drive while
   // the day filter is off. A figure nothing has measured yet is left out rather than
