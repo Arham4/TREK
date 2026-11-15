@@ -14,6 +14,14 @@ import type { Outfit, OutfitItem, OutfitInventoryItem, Day } from '../../types'
 interface OutfitsPlannerPanelProps {
   tripId: number
   canEdit?: boolean
+  /**
+   * `fill` (default) is the desktop panel: fixed height with its own inner
+   * day-list scroll. `page` is for the phone tab: natural height stacked in
+   * the tab's single scroll body, so there is never a scroll box inside a
+   * scroll box (touch scrolling dies there) and the wardrobe sits below the
+   * days instead of squeezing them into a side column.
+   */
+  layout?: 'fill' | 'page'
 }
 
 interface TripMemberInfo {
@@ -33,7 +41,7 @@ const PRESET_TITLES = [
   { label: 'Travel', icon: Plane },
 ]
 
-export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
+export function OutfitsPlannerPanel({ tripId, layout = 'fill' }: OutfitsPlannerPanelProps) {
   const { t } = useTranslation()
   const toast = useToast()
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -201,8 +209,10 @@ export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
     }
   }
 
+  const page = layout === 'page'
+
   return (
-    <div className="flex flex-col h-full text-content">
+    <div className={`flex flex-col text-content ${page ? '' : 'h-full'}`}>
       {/* ── Traveler Selector & Toolbar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-edge-subtle">
         {/* Traveler tabs */}
@@ -274,9 +284,9 @@ export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
       </div>
 
       {/* ── Main Layout: Days Grid + Wardrobe Drawer ── */}
-      <div className="flex flex-1 gap-6 overflow-hidden">
+      <div className={page ? 'flex flex-col gap-4 lg:flex-row lg:gap-6' : 'flex flex-1 gap-6 overflow-hidden'}>
         {/* Days List */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-6">
+        <div className={page ? 'min-w-0 flex-1 space-y-4' : 'flex-1 overflow-y-auto pr-1 space-y-6'}>
           {days.length === 0 ? (
             <div className="p-8 text-center text-content-muted bg-surface-card rounded-2xl border border-edge-subtle">
               <Shirt className="mx-auto mb-2 opacity-40" size={32} />
@@ -293,18 +303,18 @@ export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
                   className="bg-surface-card rounded-2xl border border-edge-subtle overflow-hidden shadow-sm"
                 >
                   {/* Day Header */}
-                  <div className="px-5 py-3.5 bg-surface-secondary/70 border-b border-edge-subtle flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="px-2.5 py-1 rounded-md bg-accent/10 text-accent font-semibold text-xs">
+                  <div className={`bg-surface-secondary/70 border-b border-edge-subtle flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${page ? 'px-4 py-3' : 'px-5 py-3.5'}`}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-md bg-accent/10 text-accent font-semibold text-xs">
                         Day {day.day_number}
                       </span>
                       {day.date && (
-                        <span className="text-xs font-medium text-content-muted">
+                        <span className="shrink-0 text-xs font-medium text-content-muted">
                           {day.date}
                         </span>
                       )}
                       {day.title && (
-                        <span className="text-xs font-semibold text-content">
+                        <span className="min-w-0 text-xs font-semibold text-content">
                           — {day.title}
                         </span>
                       )}
@@ -327,14 +337,14 @@ export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
                   </div>
 
                   {/* Outfits for this Day */}
-                  <div className="p-5 space-y-4">
+                  <div className={page ? 'p-4 space-y-3' : 'p-5 space-y-4'}>
                     {dayOutfits.length === 0 && addingDayId !== day.id && (
                       <div className="py-4 text-center text-xs text-content-muted/80">
                         {t('outfits.empty', 'No outfits planned yet for this day.')}
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={page ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
                       {dayOutfits.map((outfit) => {
                         const traveler = memberMap.get(outfit.user_id)
                         const draft = itemDrafts[outfit.id] || ''
@@ -556,7 +566,9 @@ export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
 
         {/* ── Collapsible Wardrobe Inventory Drawer ── */}
         {showWardrobeDrawer && (
-          <div className="w-80 bg-surface-card rounded-2xl border border-edge-subtle p-4 flex flex-col shrink-0 overflow-hidden shadow-sm">
+          <div className={page
+            ? 'w-full bg-surface-card rounded-2xl border border-edge-subtle p-4 shrink-0 shadow-sm'
+            : 'w-80 bg-surface-card rounded-2xl border border-edge-subtle p-4 flex flex-col shrink-0 overflow-hidden shadow-sm'}>
             <div className="flex items-center justify-between pb-3 border-b border-edge mb-3">
               <div className="flex items-center gap-2">
                 <Shirt size={15} className="text-accent" />
@@ -577,7 +589,7 @@ export function OutfitsPlannerPanel({ tripId }: OutfitsPlannerPanelProps) {
               {t('outfits.wardrobeHint', 'Items from your packing list with usage counts.')}
             </p>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div className={page ? 'space-y-2' : 'flex-1 overflow-y-auto space-y-2 pr-1'}>
               {inventory.length === 0 ? (
                 <div className="py-8 text-center text-xs text-content-faint">
                   {t('outfits.inventoryEmpty', 'No clothing items in your packing list yet.')}
