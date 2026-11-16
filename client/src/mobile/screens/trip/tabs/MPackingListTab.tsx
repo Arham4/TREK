@@ -9,6 +9,7 @@ import {
 import MDancingTrek from '../../../components/MDancingTrek'
 import MSwipeRow, { type SwipeAction } from '../../../components/MSwipeRow'
 import { useAuthStore } from '../../../../store/authStore'
+import { useTripStore } from '../../../../store/tripStore'
 import { useAddonStore } from '../../../../store/addonStore'
 import type { PackingBag, PackingItem, TripMember } from '../../../../types'
 import type { TripPlanner } from '../MTripShell'
